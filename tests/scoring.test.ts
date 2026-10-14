@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CITIES } from "@/lib/catalog";
-import { engagementRate, scoreProfile, type ScoreInput } from "@/lib/scoring";
+import {
+  engagementRate,
+  fakeFollowerShare,
+  scoreProfile,
+  UNVERIFIED_RANK_PENALTY,
+  type ScoreInput,
+} from "@/lib/scoring";
 
 type Fixture = {
   username: string;
@@ -174,6 +180,26 @@ describe("scoreProfile", () => {
     expect(engagementRate(posts, 1000)).toBeCloseTo(0.025, 5);
     expect(engagementRate([], 1000)).toBe(0);
     expect(engagementRate(posts, 0)).toBe(0);
+  });
+
+  it("ranks an unchecked account a little below the same fit", () => {
+    const base = inputFrom(FIXTURES[0]);
+    const checked = scoreProfile({ ...base, verified: true });
+    const pending = scoreProfile({ ...base, verified: false });
+    expect(UNVERIFIED_RANK_PENALTY).toBe(4);
+    expect(pending.score).toBe(checked.score - UNVERIFIED_RANK_PENALTY);
+    expect(pending.reason).toBe(checked.reason);
+  });
+
+  it("reads a fake-follower share and does not treat an unknown post count as thin", () => {
+    expect(fakeFollowerShare("Bio: café | fake followers 27.76%, ER 1.06%")).toBeCloseTo(0.2776);
+    expect(fakeFollowerShare("fake followers -")).toBeNull();
+    const heavy = scoreProfile({ ...inputFrom(FIXTURES[0]), fakeFollowerShare: 0.28 });
+    const light = scoreProfile({ ...inputFrom(FIXTURES[0]), fakeFollowerShare: 0.1 });
+    expect(heavy.breakdown.authenticity).toBeLessThan(light.breakdown.authenticity);
+    const unknown = scoreProfile({ ...inputFrom(FIXTURES[0]), postsCount: -1, followers: 8000 });
+    const thin = scoreProfile({ ...inputFrom(FIXTURES[0]), postsCount: 2, followers: 8000 });
+    expect(unknown.breakdown.authenticity).toBeGreaterThan(thin.breakdown.authenticity);
   });
 
   it("stays inside 0–100 for empty and extreme inputs", () => {

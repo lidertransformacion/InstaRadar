@@ -83,7 +83,7 @@ En Ajustes, **Subir JSON**. O desde la terminal, con el radar detenido o en marc
 make import FILE=data/real/medellin.json
 ```
 
-El archivo trae `city`, `competitors` e `influencers` (`username`, `url`, `display_name`, `followers`, `following`, `posts`, `bio`, `location`, `niche`, `mentioned_pergamino`). Si el usuario ya existe, se actualiza. Una mención a Pergamino baja el puntaje y el motivo lo dice.
+El archivo trae `city`, `competitors` e `influencers` (`username`, `url`, `display_name`, `followers`, `following`, `posts`, `bio`, `location`, `niche`, `mentioned_pergamino`, `verified`, `source`, `followers_source`, `evidence_url`, `notes`). Los seguidores pueden venir como número, como `6.4k` o vacíos. `verified: false` es una cuenta hallada en la web que todavía no se revisó en Instagram: el radar la marca **Por verificar**, la deja un poco más abajo y, si las notas traen un porcentaje de seguidores falsos, lo usa en el puntaje. En el panel, **Verificados** oculta esas cuentas y **Incluir sin dato** (encendido) muestra las que no tienen seguidores; el control de seguidores no las esconde salvo que lo apagues. Si el usuario ya existe, se actualiza. Una mención a Pergamino baja el puntaje y el motivo lo dice.
 
 ## Datos
 

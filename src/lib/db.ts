@@ -10,7 +10,7 @@ import {
   ResearchFileError,
 } from "@/lib/ingest";
 import { readPriceFile } from "@/lib/prices";
-import { scoreProfile, type ScoreResult } from "@/lib/scoring";
+import { fakeFollowerShare, scoreProfile, type ScoreResult } from "@/lib/scoring";
 import { dayStartIso, hourAgoIso } from "@/lib/pacing";
 import type {
   CityBundle,
@@ -87,16 +87,20 @@ function migrate(db: DatabaseSync): void {
       username TEXT NOT NULL UNIQUE,
       full_name TEXT NOT NULL DEFAULT '',
       bio TEXT NOT NULL DEFAULT '',
-      followers INTEGER NOT NULL DEFAULT 0,
-      following INTEGER NOT NULL DEFAULT 0,
-      posts_count INTEGER NOT NULL DEFAULT 0,
+      followers INTEGER,
+      following INTEGER,
+      posts_count INTEGER,
       city_id TEXT NOT NULL,
       zone TEXT,
       source TEXT NOT NULL DEFAULT '',
       profile_url TEXT NOT NULL,
       is_private INTEGER NOT NULL DEFAULT 0,
       sample INTEGER NOT NULL DEFAULT 0,
-      discovered_at TEXT NOT NULL
+      discovered_at TEXT NOT NULL,
+      verified INTEGER NOT NULL DEFAULT 1,
+      followers_source TEXT NOT NULL DEFAULT '',
+      evidence_url TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY,
@@ -167,6 +171,81 @@ function migrate(db: DatabaseSync): void {
       next_send_at TEXT
     );
   `);
+  ensureProfileShape(db);
+}
+
+const PROFILE_TABLE = `
+  CREATE TABLE profiles_next (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL DEFAULT '',
+    bio TEXT NOT NULL DEFAULT '',
+    followers INTEGER,
+    following INTEGER,
+    posts_count INTEGER,
+    city_id TEXT NOT NULL,
+    zone TEXT,
+    source TEXT NOT NULL DEFAULT '',
+    profile_url TEXT NOT NULL,
+    is_private INTEGER NOT NULL DEFAULT 0,
+    sample INTEGER NOT NULL DEFAULT 0,
+    discovered_at TEXT NOT NULL,
+    verified INTEGER NOT NULL DEFAULT 1,
+    followers_source TEXT NOT NULL DEFAULT '',
+    evidence_url TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT ''
+  )`;
+
+function ensureProfileShape(db: DatabaseSync): void {
+  const columns = all(db, "PRAGMA table_info(profiles)");
+  if (columns.length === 0) return;
+  const names = new Set(columns.map((column) => String(column.name)));
+  const followers = columns.find((column) => column.name === "followers");
+  const nullable = followers != null && Number(followers.notnull) === 0;
+  const complete =
+    names.has("verified") &&
+    names.has("followers_source") &&
+    names.has("evidence_url") &&
+    names.has("notes");
+  if (nullable && complete) return;
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  db.exec("BEGIN");
+  try {
+    db.exec(PROFILE_TABLE);
+    if (complete) {
+      db.exec(
+        `INSERT INTO profiles_next (
+          id, username, full_name, bio, followers, following, posts_count, city_id, zone,
+          source, profile_url, is_private, sample, discovered_at, verified, followers_source,
+          evidence_url, notes
+        )
+        SELECT
+          id, username, full_name, bio, followers, following, posts_count, city_id, zone,
+          source, profile_url, is_private, sample, discovered_at, verified, followers_source,
+          evidence_url, notes
+        FROM profiles`,
+      );
+    } else {
+      db.exec(
+        `INSERT INTO profiles_next (
+          id, username, full_name, bio, followers, following, posts_count, city_id, zone,
+          source, profile_url, is_private, sample, discovered_at
+        )
+        SELECT
+          id, username, full_name, bio, followers, following, posts_count, city_id, zone,
+          source, profile_url, is_private, sample, discovered_at
+        FROM profiles`,
+      );
+    }
+    db.exec("DROP TABLE profiles");
+    db.exec("ALTER TABLE profiles_next RENAME TO profiles");
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  db.exec("PRAGMA foreign_keys = ON;");
 }
 
 function recoverStaleRun(db: DatabaseSync): void {
@@ -292,15 +371,19 @@ export type StoredProfile = {
   username: string;
   fullName: string;
   bio: string;
-  followers: number;
-  following: number;
-  postsCount: number;
+  followers: number | null;
+  following: number | null;
+  postsCount: number | null;
   cityId: string;
   zone: string | null;
   source: string;
   sample: boolean;
   isPrivate: boolean;
   posts: StoredPost[];
+  verified: boolean;
+  followersSource: string;
+  evidenceUrl: string;
+  notes: string;
 };
 
 export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
@@ -309,8 +392,9 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
   db.prepare(
     `INSERT INTO profiles (
       username, full_name, bio, followers, following, posts_count, city_id, zone,
-      source, profile_url, is_private, sample, discovered_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      source, profile_url, is_private, sample, discovered_at, verified, followers_source,
+      evidence_url, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(username) DO UPDATE SET
       full_name = excluded.full_name,
       bio = excluded.bio,
@@ -321,7 +405,11 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
       zone = excluded.zone,
       source = excluded.source,
       is_private = excluded.is_private,
-      sample = excluded.sample`,
+      sample = excluded.sample,
+      verified = excluded.verified,
+      followers_source = excluded.followers_source,
+      evidence_url = excluded.evidence_url,
+      notes = excluded.notes`,
   ).run(
     profile.username,
     profile.fullName,
@@ -336,6 +424,10 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
     profile.isPrivate ? 1 : 0,
     profile.sample ? 1 : 0,
     now,
+    profile.verified ? 1 : 0,
+    profile.followersSource,
+    profile.evidenceUrl,
+    profile.notes,
   );
   const idRow = one(db, "SELECT id FROM profiles WHERE username = ?", profile.username);
   const id = Number(idRow?.id);
@@ -374,9 +466,9 @@ function rescore(db: DatabaseSync, profileId: number): ScoreResult | null {
     zone: profile.zone ? String(profile.zone) : null,
     cityName: city?.name ?? "",
     zones: city?.zones.map((zone) => zone.name) ?? [],
-    followers: Number(profile.followers ?? 0),
-    following: Number(profile.following ?? 0),
-    postsCount: Number(profile.posts_count ?? 0),
+    followers: profile.followers == null ? 0 : Number(profile.followers),
+    following: profile.following == null ? 0 : Number(profile.following),
+    postsCount: profile.posts_count == null ? -1 : Number(profile.posts_count),
     recentPosts: posts.map((post) => ({
       likes: Number(post.likes ?? 0),
       comments: Number(post.comments ?? 0),
@@ -384,6 +476,8 @@ function rescore(db: DatabaseSync, profileId: number): ScoreResult | null {
       caption: String(post.caption ?? ""),
     })),
     competitorUsernames: competitorHandles(db, String(profile.city_id)),
+    verified: Number(profile.verified ?? 1) === 1,
+    fakeFollowerShare: fakeFollowerShare(String(profile.notes ?? "")),
   });
   db.prepare(
     `INSERT INTO scores (
@@ -583,12 +677,16 @@ function toProfileCard(row: SqlRow): ProfileCard {
     username: String(row.username),
     fullName: String(row.full_name ?? ""),
     zone: row.zone ? String(row.zone) : null,
-    followers: Number(row.followers ?? 0),
-    following: Number(row.following ?? 0),
+    followers: row.followers == null ? null : Number(row.followers),
+    following: row.following == null ? null : Number(row.following),
     engagementRate: Number(row.engagement_rate ?? 0),
     score: Number(row.score ?? 0),
     reason: String(row.reason ?? ""),
     source: String(row.source ?? ""),
+    verified: Number(row.verified ?? 1) === 1,
+    followersSource: String(row.followers_source ?? ""),
+    evidenceUrl: String(row.evidence_url ?? ""),
+    notes: String(row.notes ?? ""),
     profileUrl: String(row.profile_url),
     cityId: String(row.city_id),
     sample: Number(row.sample) === 1,

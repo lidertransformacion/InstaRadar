@@ -12,6 +12,7 @@ const SLIDER_MIN = 500;
 const SLIDER_MAX = 100_000;
 
 type SortKey = "score" | "engagement" | "followers";
+type ReviewFilter = "todos" | "verificados";
 
 export function RadarView(props: {
   state: PanelState;
@@ -28,6 +29,8 @@ export function RadarView(props: {
   const [range, setRange] = useState<number[] | null>(null);
   const [zone, setZone] = useState("todas");
   const [sort, setSort] = useState<SortKey>("score");
+  const [review, setReview] = useState<ReviewFilter>("todos");
+  const [includeUnknown, setIncludeUnknown] = useState(true);
   const [openId, setOpenId] = useState<number | null>(null);
   const active = useMemo(
     () =>
@@ -41,18 +44,23 @@ export function RadarView(props: {
 
   const visible = useMemo(() => {
     const filtered = profiles.filter((profile) => {
-      if (profile.followers < active[0] || profile.followers > active[1]) return false;
+      if (review === "verificados" && !profile.verified) return false;
+      if (profile.followers == null) {
+        if (!includeUnknown) return false;
+      } else if (profile.followers < active[0] || profile.followers > active[1]) {
+        return false;
+      }
       if (zone !== "todas" && profile.zone !== zone) return false;
       return true;
     });
     const copy = [...filtered];
     copy.sort((a, b) => {
       if (sort === "engagement") return b.engagementRate - a.engagementRate;
-      if (sort === "followers") return b.followers - a.followers;
+      if (sort === "followers") return compareFollowers(a.followers, b.followers);
       return b.score - a.score;
     });
     return copy;
-  }, [profiles, active, zone, sort]);
+  }, [profiles, active, zone, sort, review, includeUnknown]);
 
   const presentZones = props.zones.filter((name) => profiles.some((profile) => profile.zone === name));
 
@@ -131,7 +139,7 @@ export function RadarView(props: {
           </Button>
           <Button type="button" variant="outline" className="h-11" asChild>
             <a
-              href={`/api/export?city=${settings.cityId}&min=${active[0]}&max=${active[1]}${zone !== "todas" ? `&zone=${encodeURIComponent(zone)}` : ""}`}
+              href={`/api/export?city=${settings.cityId}&min=${active[0]}&max=${active[1]}&unknown=${includeUnknown ? "1" : "0"}${review === "verificados" ? "&verified=1" : ""}${zone !== "todas" ? `&zone=${encodeURIComponent(zone)}` : ""}`}
             >
               Exportar CSV
             </a>
@@ -152,6 +160,18 @@ export function RadarView(props: {
         <span>{statusLine(run.status, run.message, props.cityName, run.cityId)}</span>
         <span className="ml-auto text-muted-foreground tabular-nums">{visible.length}</span>
       </p>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <Chip active={review === "todos"} onClick={() => setReview("todos")}>
+          Todos
+        </Chip>
+        <Chip active={review === "verificados"} onClick={() => setReview("verificados")}>
+          Verificados
+        </Chip>
+        <Chip active={includeUnknown} onClick={() => setIncludeUnknown((current) => !current)}>
+          Incluir sin dato
+        </Chip>
+      </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         <Chip active={zone === "todas"} onClick={() => setZone("todas")}>
@@ -181,7 +201,9 @@ export function RadarView(props: {
 
       {!props.loading && visible.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-          Nadie en este rango. Mueve los seguidores o dale a Buscar.
+          {review === "verificados"
+            ? "Nadie verificado en este rango."
+            : "Nadie en este rango. Mueve los seguidores o dale a Buscar."}
         </p>
       ) : null}
 
@@ -242,8 +264,11 @@ function ProfileRow(props: {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {profile.zone ? <Badge variant="secondary">{profile.zone}</Badge> : null}
+            {profile.verified ? null : (
+              <Badge className="border-amber-800/25 bg-amber-100 text-amber-950">Por verificar</Badge>
+            )}
             {props.showSample ? <Badge variant="outline">Ejemplo</Badge> : null}
-            <span className="tabular-nums">{formatFollowers(profile.followers)}</span>
+            <span className="tabular-nums">{followerLabel(profile.followers)}</span>
             <span aria-hidden>·</span>
             <span className="tabular-nums">{formatPercent(profile.engagementRate)}</span>
           </div>
@@ -263,6 +288,21 @@ function ProfileRow(props: {
               {profile.breakdown.penalty ? ` · Colaboración −${profile.breakdown.penalty}` : ""}
               {profile.source ? ` · ${profile.source}` : ""}
             </p>
+          ) : null}
+          {props.open && profile.notes ? (
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground" title={profile.notes}>
+              {profile.notes}
+            </p>
+          ) : null}
+          {props.open && profile.evidenceUrl ? (
+            <a
+              className="mt-1 inline-flex text-xs underline underline-offset-2"
+              href={profile.evidenceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Fuente
+            </a>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" variant="secondary" className="h-9" onClick={props.onInvite}>
@@ -293,6 +333,17 @@ function Chip(props: { active: boolean; onClick: () => void; children: ReactNode
       {props.children}
     </button>
   );
+}
+
+function followerLabel(value: number | null): string {
+  return value == null ? "sin dato" : formatFollowers(value);
+}
+
+function compareFollowers(a: number | null, b: number | null): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return b - a;
 }
 
 function clamp(value: number): number {

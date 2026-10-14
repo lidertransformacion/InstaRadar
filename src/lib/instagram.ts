@@ -370,6 +370,10 @@ async function inspectProfile(
         source: origin.source,
         sample: false,
         isPrivate,
+        verified: true,
+        followersSource: "",
+        evidenceUrl: "",
+        notes: "",
         posts,
       };
     } catch (error) {

@@ -9,7 +9,7 @@ import {
   planCompetitorStudy,
   planProfiles,
 } from "@/lib/ingest";
-import { scoreProfile } from "@/lib/scoring";
+import { fakeFollowerShare, scoreProfile, UNVERIFIED_RANK_PENALTY } from "@/lib/scoring";
 
 const raw = fs.readFileSync(path.join(process.cwd(), "data/real/medellin.json"), "utf8");
 
@@ -42,9 +42,9 @@ describe("research import", () => {
       zone: amalia!.zone,
       cityName: city.name,
       zones: city.zones.map((zone) => zone.name),
-      followers: amalia!.followers,
-      following: amalia!.following,
-      postsCount: amalia!.postsCount,
+      followers: amalia!.followers ?? 0,
+      following: amalia!.following ?? 0,
+      postsCount: amalia!.postsCount ?? -1,
       recentPosts: [],
       competitorUsernames: ["pergaminocafe"],
     });
@@ -54,9 +54,9 @@ describe("research import", () => {
       zone: tomando!.zone,
       cityName: city.name,
       zones: city.zones.map((zone) => zone.name),
-      followers: tomando!.followers,
-      following: tomando!.following,
-      postsCount: tomando!.postsCount,
+      followers: tomando!.followers ?? 0,
+      following: tomando!.following ?? 0,
+      postsCount: tomando!.postsCount ?? -1,
       recentPosts: [],
       competitorUsernames: ["pergaminocafe"],
     });
@@ -69,6 +69,40 @@ describe("research import", () => {
   it("uses the same usernames on a second plan so a re-import can merge", () => {
     const again = planProfiles(parseResearchJson(raw), city, "pergaminocafe");
     expect(again.map((profile) => profile.username)).toEqual(profiles.map((profile) => profile.username));
-    expect(new Set(again.map((profile) => profile.username)).size).toBe(7);
+    expect(new Set(again.map((profile) => profile.username)).size).toBe(39);
+    expect(profiles.filter((profile) => profile.verified)).toHaveLength(9);
+  });
+
+  it("keeps compact counts, empty followers, and the pending Instagram check", () => {
+    const sara = profiles.find((profile) => profile.username === "saradegusta");
+    const sharon = profiles.find((profile) => profile.username === "sharonbiker");
+    const caro = profiles.find((profile) => profile.username === "carobarrada_");
+    expect(sara?.followers).toBe(6400);
+    expect(sara?.following).toBeNull();
+    expect(sara?.postsCount).toBeNull();
+    expect(sara?.verified).toBe(false);
+    expect(sara?.bio).toContain("CHEF");
+    expect(sharon?.bio).toContain("je t'aime");
+    expect(caro?.followers).toBeNull();
+    expect(caro?.notes).toContain("experta en brunch");
+    expect(caro?.evidenceUrl).toContain("h13n.com");
+
+    const shared = {
+      bio: sara!.bio,
+      captions: sara!.posts.map((post) => post.caption),
+      zone: sara!.zone,
+      cityName: city.name,
+      zones: city.zones.map((zone) => zone.name),
+      followers: sara!.followers ?? 0,
+      following: sara!.following ?? 0,
+      postsCount: sara!.postsCount ?? -1,
+      recentPosts: [],
+      competitorUsernames: ["pergaminocafe"],
+      fakeFollowerShare: fakeFollowerShare(sara!.notes),
+    };
+    const pending = scoreProfile({ ...shared, verified: false });
+    const checked = scoreProfile({ ...shared, verified: true });
+    expect(pending.score).toBe(Math.max(0, checked.score - UNVERIFIED_RANK_PENALTY));
+    expect(shared.fakeFollowerShare).toBeGreaterThan(0.25);
   });
 });

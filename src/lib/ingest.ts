@@ -1,4 +1,5 @@
 import { formatFollowers } from "@/lib/format";
+import { parseCompactNumber } from "@/lib/parse";
 import { fold, cleanUsername } from "@/lib/text";
 import type { CityBundle, CompetitorStudy } from "@/lib/types";
 import type { StoredProfile } from "@/lib/db";
@@ -19,13 +20,18 @@ export type ResearchInfluencer = {
   username: string;
   url: string;
   displayName: string;
-  followers: number;
-  following: number;
-  posts: number;
+  followers: number | null;
+  following: number | null;
+  posts: number | null;
   bio: string;
   location: string;
   niche: string;
   mentionedPergamino: boolean;
+  verified: boolean;
+  source: string;
+  followersSource: string;
+  evidenceUrl: string;
+  notes: string;
 };
 
 export type ResearchFile = {
@@ -53,8 +59,30 @@ function asNumber(value: unknown): number | null {
   return Math.round(value);
 }
 
+function asCount(value: unknown): number | null {
+  if (typeof value === "number") return asNumber(value);
+  if (typeof value !== "string") return null;
+  const parsed = parseCompactNumber(value, "en");
+  if (parsed == null || parsed < 0) return null;
+  return parsed;
+}
+
 function asText(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === "string" ? decodeBasicEntities(value.trim()) : "";
+}
+
+function decodeBasicEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function bioFromNotes(notes: string): string {
+  const match = notes.match(/^\s*Bio:\s*([\s\S]*?)(?:\s*\|\s*fake followers\b|$)/i);
+  return match?.[1]?.trim() ?? "";
 }
 
 export function parseResearchJson(raw: string): ResearchFile {
@@ -113,23 +141,24 @@ function parseInfluencer(value: unknown, index: number): ResearchInfluencer {
   if (!row) throw new ResearchFileError(`El perfil ${index + 1} no es un objeto.`);
   const username = cleanUsername(asText(row.username));
   if (!username) throw new ResearchFileError(`El perfil ${index + 1} no tiene usuario.`);
-  const followers = asNumber(row.followers);
-  const following = asNumber(row.following);
-  const posts = asNumber(row.posts);
-  if (followers == null || following == null || posts == null) {
-    throw new ResearchFileError(`A @${username} le faltan seguidores, seguidos o publicaciones.`);
-  }
+  const notes = asText(row.notes);
+  const bio = asText(row.bio) || bioFromNotes(notes);
   return {
     username,
     url: asText(row.url) || `https://www.instagram.com/${username}/`,
     displayName: asText(row.display_name) || username,
-    followers,
-    following,
-    posts,
-    bio: asText(row.bio),
+    followers: asCount(row.followers),
+    following: asCount(row.following),
+    posts: asCount(row.posts),
+    bio,
     location: asText(row.location),
     niche: asText(row.niche),
     mentionedPergamino: row.mentioned_pergamino === true,
+    verified: row.verified !== false,
+    source: asText(row.source),
+    followersSource: asText(row.followers_source),
+    evidenceUrl: asText(row.evidence_url),
+    notes,
   };
 }
 
@@ -170,9 +199,13 @@ export function planProfiles(
       postsCount: person.posts,
       cityId: city.id,
       zone: matchZone(person.location, zones),
-      source: "investigación",
+      source: person.source || "investigación",
       sample: false,
       isPrivate: false,
+      verified: person.verified,
+      followersSource: person.followersSource,
+      evidenceUrl: person.evidenceUrl,
+      notes: person.notes,
       posts: captions.map((caption) => ({
         caption,
         likes: 0,

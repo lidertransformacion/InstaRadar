@@ -67,12 +67,16 @@ export type ProfileCard = {
   username: string;
   fullName: string;
   zone: string | null;
-  followers: number;
-  following: number;
+  followers: number | null;
+  following: number | null;
   engagementRate: number;
   score: number;
   reason: string;
   source: string;
+  verified: boolean;
+  followersSource: string;
+  evidenceUrl: string;
+  notes: string;
   profileUrl: string;
   cityId: string;
   sample: boolean;
