@@ -48,3 +48,4 @@ next-env.d.ts
 /data/avatars/
 /test-results/
 /playwright-report/
+cloudflare/dist/
