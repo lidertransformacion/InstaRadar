@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { avatarHue, formatFollowers, formatPercent, initials } from "@/lib/format";
 import type { PanelState, ProfileCard } from "@/lib/types";
+import { libertarioMatch } from "@/lib/libertario-match";
 
 const SLIDER_MIN = 500;
 const SLIDER_MAX = 100_000;
 
-type SortKey = "score" | "engagement" | "followers";
+type SortKey = "match" | "score" | "engagement" | "followers";
 type ReviewFilter = "todos" | "verificados";
 
 export function RadarView(props: {
@@ -28,7 +29,7 @@ export function RadarView(props: {
   const { settings, run, profiles, cities } = props.state;
   const [range, setRange] = useState<number[] | null>(null);
   const [zone, setZone] = useState("todas");
-  const [sort, setSort] = useState<SortKey>("score");
+  const [sort, setSort] = useState<SortKey>("match");
   const [review, setReview] = useState<ReviewFilter>("todos");
   const [includeUnknown, setIncludeUnknown] = useState(true);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -55,6 +56,7 @@ export function RadarView(props: {
     });
     const copy = [...filtered];
     copy.sort((a, b) => {
+      if (sort === "match") return (libertarioMatch(b.username)?.total ?? -1) - (libertarioMatch(a.username)?.total ?? -1);
       if (sort === "engagement") return b.engagementRate - a.engagementRate;
       if (sort === "followers") return compareFollowers(a.followers, b.followers);
       return b.score - a.score;
@@ -183,6 +185,9 @@ export function RadarView(props: {
           </Chip>
         ))}
         <span className="ml-auto flex shrink-0 gap-1">
+          <Chip active={sort === "match"} onClick={() => setSort("match")}>
+            Match Libertario
+          </Chip>
           <Chip active={sort === "score"} onClick={() => setSort("score")}>
             Ajuste
           </Chip>
@@ -233,6 +238,7 @@ function ProfileRow(props: {
   onInvite: () => void;
 }) {
   const { profile } = props;
+  const match = libertarioMatch(profile.username);
   return (
     <article
       className="rise-in rounded-2xl border border-border bg-card px-3 py-3 sm:px-4"
@@ -247,11 +253,12 @@ function ProfileRow(props: {
               <p className="truncate text-sm text-muted-foreground">@{profile.username}</p>
             </div>
             <div className="text-right">
-              <p className={`font-heading text-2xl leading-none tabular-nums ${scoreTone(profile.score)}`}>
-                {profile.score}
+              <p className={`font-heading text-2xl leading-none tabular-nums ${scoreTone(match?.total ?? profile.score)}`}>
+                {match?.total ?? profile.score}
               </p>
-              <div className="mt-1.5 ml-auto h-1 w-14 overflow-hidden rounded-full bg-muted">
-                <div className="score-bar h-full bg-primary" style={{ width: `${profile.score}%` }} />
+              <p className="text-[10px] text-muted-foreground">{match ? "match Libertario" : "ajuste"}</p>
+              <div className="mt-1 ml-auto h-1 w-14 overflow-hidden rounded-full bg-muted">
+                <div className="score-bar h-full bg-primary" style={{ width: `${match?.total ?? profile.score}%` }} />
               </div>
             </div>
           </div>
@@ -273,9 +280,20 @@ function ProfileRow(props: {
           >
             {profile.reason}
           </button>
+          {match ? <p className="mt-1 text-xs leading-snug">{match.explicacion}</p> : null}
+          {props.open && match ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Match: Nicho {match.nicho}/30 · Zona {match.zona}/20 · Tamaño {match.tamano}/15 · Engagement{" "}
+              {match.engagement}/10 · Autenticidad {match.autenticidad}/10 · Valores {match.valores}/10 ·
+              Competencia {match.competencia}/5
+              {match.penalizacion ? ` · Sin verificar −${match.penalizacion}` : ""}
+              {match.er != null ? ` · ER ${match.er}%` : " · ER sin dato"}
+              {match.fake != null ? ` · Falsos ${match.fake}%` : ""}
+            </p>
+          ) : null}
           {props.open ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              Contenido {profile.breakdown.content} · Zona {profile.breakdown.location} · Engagement{" "}
+              Ajuste radar: Contenido {profile.breakdown.content} · Zona {profile.breakdown.location} · Engagement{" "}
               {profile.breakdown.engagement} · Real {profile.breakdown.authenticity} · Ritmo{" "}
               {profile.breakdown.frequency}
               {profile.breakdown.penalty ? ` · Colaboración −${profile.breakdown.penalty}` : ""}

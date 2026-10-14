@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatFollowers } from "@/lib/format";
 import type { PanelState } from "@/lib/types";
+import { CompetenciaZonas } from "@/components/competencia-zonas";
 
 export function CompetitorView(props: {
   state: PanelState;
@@ -18,8 +19,9 @@ export function CompetitorView(props: {
 
   return (
     <div className="space-y-4">
+      <CompetenciaZonas />
       <section className="rounded-2xl border border-border bg-card p-4">
-        <p className="text-sm">Cuenta pública</p>
+        <p className="text-sm">Estudio en vivo de una cuenta pública</p>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <Input
             value={username}
