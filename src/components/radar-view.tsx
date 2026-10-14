@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { avatarHue, formatFollowers, initials } from "@/lib/format";
 import type { PanelState, ProfileCard } from "@/lib/types";
+import { LOCKED_FOLLOWER_RANGE, SHOW_SEARCH_CONTROLS } from "@/lib/ui-flags";
 import { engagementDisplay, libertarioMatch } from "@/lib/libertario-match";
 
 const SLIDER_MIN = 500;
@@ -35,10 +36,11 @@ export function RadarView(props: {
   const [openId, setOpenId] = useState<number | null>(null);
   const active = useMemo(
     () =>
-      [range?.[0] ?? settings.minFollowers, range?.[1] ?? settings.maxFollowers] as [
+      LOCKED_FOLLOWER_RANGE ??
+      ([range?.[0] ?? settings.minFollowers, range?.[1] ?? settings.maxFollowers] as [
         number,
         number,
-      ],
+      ]),
     [range, settings.minFollowers, settings.maxFollowers],
   );
   const running = run.status === "running";
@@ -122,9 +124,14 @@ export function RadarView(props: {
               props.onRange(min, max);
             }}
             aria-label="Rango de seguidores"
+            disabled={LOCKED_FOLLOWER_RANGE != null}
           />
+          {LOCKED_FOLLOWER_RANGE ? (
+            <p className="mt-2 text-xs text-muted-foreground">Rango fijo por ahora.</p>
+          ) : null}
         </div>
 
+        {SHOW_SEARCH_CONTROLS ? (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
@@ -151,6 +158,7 @@ export function RadarView(props: {
             </a>
           </Button>
         </div>
+        ) : null}
 
         {settings.mockMode ? (
           <p className="mt-3 text-xs text-muted-foreground">
