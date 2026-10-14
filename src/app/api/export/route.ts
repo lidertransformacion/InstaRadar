@@ -1,5 +1,6 @@
 import { listProfiles } from "@/lib/db";
-import { csvCell, formatPercent } from "@/lib/format";
+import { csvCell } from "@/lib/format";
+import { engagementDisplay } from "@/lib/libertario-match";
 
 
 export async function GET(request: Request) {
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
         profile.zone ?? "",
         profile.followers == null ? "sin dato" : profile.followers,
         profile.following == null ? "" : profile.following,
-        formatPercent(profile.engagementRate),
+        engagementDisplay(profile.username, profile.engagementRate).label,
         profile.score,
         profile.reason,
         profile.source,

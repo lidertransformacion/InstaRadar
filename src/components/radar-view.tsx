@@ -5,9 +5,9 @@ import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { avatarHue, formatFollowers, formatPercent, initials } from "@/lib/format";
+import { avatarHue, formatFollowers, initials } from "@/lib/format";
 import type { PanelState, ProfileCard } from "@/lib/types";
-import { libertarioMatch } from "@/lib/libertario-match";
+import { engagementDisplay, libertarioMatch } from "@/lib/libertario-match";
 
 const SLIDER_MIN = 500;
 const SLIDER_MAX = 100_000;
@@ -57,7 +57,11 @@ export function RadarView(props: {
     const copy = [...filtered];
     copy.sort((a, b) => {
       if (sort === "match") return (libertarioMatch(b.username)?.total ?? -1) - (libertarioMatch(a.username)?.total ?? -1);
-      if (sort === "engagement") return b.engagementRate - a.engagementRate;
+      if (sort === "engagement")
+        return (
+          (engagementDisplay(b.username, b.engagementRate).value ?? -1) -
+          (engagementDisplay(a.username, a.engagementRate).value ?? -1)
+        );
       if (sort === "followers") return compareFollowers(a.followers, b.followers);
       return b.score - a.score;
     });
@@ -270,7 +274,7 @@ function ProfileRow(props: {
             {props.showSample ? <Badge variant="outline">Ejemplo</Badge> : null}
             <span className="tabular-nums">{followerLabel(profile.followers)}</span>
             <span aria-hidden>·</span>
-            <span className="tabular-nums">{formatPercent(profile.engagementRate)}</span>
+            <span className="tabular-nums">{engagementDisplay(profile.username, profile.engagementRate).label}</span>
           </div>
           <button
             type="button"
@@ -301,7 +305,7 @@ function ProfileRow(props: {
           {props.open ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Ajuste radar: Contenido {profile.breakdown.content} · Zona {profile.breakdown.location} · Engagement{" "}
-              {profile.breakdown.engagement} · Real {profile.breakdown.authenticity} · Ritmo{" "}
+              {profile.breakdown.engagement} (heurística antigua) · Real {profile.breakdown.authenticity} · Ritmo{" "}
               {profile.breakdown.frequency}
               {profile.breakdown.penalty ? ` · Colaboración −${profile.breakdown.penalty}` : ""}
               {profile.source ? ` · ${profile.source}` : ""}

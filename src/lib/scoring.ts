@@ -269,7 +269,7 @@ function buildReason(input: {
   competitor: string | null;
 }): string {
   const place = input.zone ? `en ${input.zone}` : `en ${input.cityName}`;
-  const percent = formatPercent(input.engagementRate);
+  const percent = input.engagementRate > 0 ? formatPercent(input.engagementRate) : "sin medir";
   if (input.authenticity <= 6) {
     return oneLine("El engagement no cuadra con el tamaño de la cuenta.");
   }

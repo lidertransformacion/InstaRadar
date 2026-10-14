@@ -695,7 +695,7 @@ function toProfileCard(row: SqlRow): ProfileCard {
     following: row.following == null ? null : Number(row.following),
     engagementRate: Number(row.engagement_rate ?? 0),
     score: Number(row.score ?? 0),
-    reason: String(row.reason ?? ""),
+    reason: String(row.reason ?? "").replace(/engagement 0[,.]0\s?%/gi, (m) => (m[0] === "E" ? "Engagement" : "engagement") + " sin medir"),
     source: String(row.source ?? ""),
     verified: Number(row.verified ?? 1) === 1,
     followersSource: String(row.followers_source ?? ""),
