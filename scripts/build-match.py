@@ -18,6 +18,7 @@ for i in d['influencers']:
     elif kw(nl,'food','comida','foodie','chef','drinks','bebidas'): n=23; why.append('foodie')
     elif kw(nl,'wellness','saludable','vegan','bienestar'): n=19; why.append('bienestar')
     elif kw(nl,'fitness','crossfit','mentalidad'): n=16; why.append('fitness')
+    elif kw(nl,'humor','nightlife'): n=5; why.append('humor/nightlife sin café ni comida')
     elif kw(nl,'moda','beauty','fashion'): n=7; why.append('moda/belleza (lejos del café)')
     elif kw(nl,'lifestyle','viaje','travel'): n=13; why.append('lifestyle')
     else: n=10
@@ -28,7 +29,7 @@ for i in d['influencers']:
     elif kw(loc,'envigado','sabaneta'): z=11; why.append('Envigado (fuera de zonas Libertario)')
     elif 'medell' in loc or 'mde' in loc: z=13
     elif 'colombia' in loc: z=5; why.append('ubicación solo "Colombia"')
-    else: z=0
+    else: z=0; why.append('ubicación no declarada')
     # tamaño 15
     if f is None: s=4; why.append('seguidores sin verificar')
     elif 3000<=f<=15000: s=15
@@ -50,20 +51,22 @@ for i in d['influencers']:
     elif ff<35: a=4; why.append(f'{ff}% seguidores falsos (Modash)')
     else: a=2; why.append(f'{ff}% seguidores falsos (Modash)')
     # estética/valores 10
-    if kw(nl,'café'): v=10
+    if kw(nl,'humor','nightlife'): v=3; why.append('tono fiesta/humor lejos del ADN de especialidad')
+    elif kw(nl,'café'): v=10
     elif kw(t,'experiencia','saludable','sanos','consciente','sostenible','vegan','receta','gluten'): v=8
     elif kw(nl,'food','comida','brunch'): v=7
     elif kw(nl,'moda','beauty','fashion','lujo') or kw(t,'lujo'): v=5
     else: v=6
     # competidores 5
     mp=i.get('mentioned_pergamino')
-    if mp is True: c=3; why.append('ya mencionó a Pergamino (afinidad probada; revisar exclusividad)')
+    if kw(t,'collab','publicidad') and i.get('source')=='pedido por Santiago': c=4; why.append('hace publicidad pagada (no con cafés)')
+    elif mp is True: c=3; why.append('ya mencionó a Pergamino (afinidad probada; revisar exclusividad)')
     elif mp is False: c=5
     else: c=4
     pen=0 if i.get('verified') else 5
     total=max(0,min(100,n+z+s+e+a+v+c-pen))
     out[i['username']]=dict(total=total,nicho=n,zona=z,tamano=s,engagement=e,autenticidad=a,valores=v,competencia=c,penalizacion=pen,
         er=er,fake=ff,verificado=bool(i.get('verified')),
-        explicacion=('Encaja por '+', '.join(why[:3]) if why else 'Encaje moderado')+('.' if i.get('verified') else '. Dato de terceros: verificar perfil.'))
+        explicacion=(('Encaje bajo: ' if n<=7 else 'Encaja por ')+', '.join(why[:3]) if why else 'Encaje moderado')+('.' if i.get('verified') else '. Dato de terceros: verificar perfil.'))
 json.dump(out,open('src/data/match-libertario.json','w'),ensure_ascii=False,indent=1)
 for u,m in sorted(out.items(),key=lambda x:-x[1]['total']): print(m['total'],u,m['explicacion'])

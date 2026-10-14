@@ -447,7 +447,7 @@
   "er": 2.15,
   "fake": 18.15,
   "verificado": false,
-  "explicacion": "Encaja por moda/belleza (lejos del café). Dato de terceros: verificar perfil."
+  "explicacion": "Encaje bajo: moda/belleza (lejos del café). Dato de terceros: verificar perfil."
  },
  "danielagil07": {
   "total": 50,
@@ -462,7 +462,7 @@
   "er": 1.79,
   "fake": 24.35,
   "verificado": false,
-  "explicacion": "Encaja por moda/belleza (lejos del café). Dato de terceros: verificar perfil."
+  "explicacion": "Encaje bajo: moda/belleza (lejos del café). Dato de terceros: verificar perfil."
  },
  "julianamontoya_u": {
   "total": 60,
@@ -492,7 +492,7 @@
   "er": 1.23,
   "fake": 14.38,
   "verificado": false,
-  "explicacion": "Encaja por moda/belleza (lejos del café). Dato de terceros: verificar perfil."
+  "explicacion": "Encaje bajo: moda/belleza (lejos del café). Dato de terceros: verificar perfil."
  },
  "sofialopezg": {
   "total": 50,
@@ -507,7 +507,7 @@
   "er": 1.34,
   "fake": 20.93,
   "verificado": false,
-  "explicacion": "Encaja por moda/belleza (lejos del café). Dato de terceros: verificar perfil."
+  "explicacion": "Encaje bajo: moda/belleza (lejos del café). Dato de terceros: verificar perfil."
  },
  "madul_________": {
   "total": 65,
@@ -583,5 +583,50 @@
   "fake": null,
   "verificado": false,
   "explicacion": "Encaja por brunch/desayunos, seguidores sin verificar. Dato de terceros: verificar perfil."
+ },
+ "trululupripra02": {
+  "total": 51,
+  "nicho": 5,
+  "zona": 13,
+  "tamano": 15,
+  "engagement": 5,
+  "autenticidad": 6,
+  "valores": 3,
+  "competencia": 4,
+  "penalizacion": 0,
+  "er": null,
+  "fake": null,
+  "verificado": true,
+  "explicacion": "Encaje bajo: humor/nightlife sin café ni comida, tono fiesta/humor lejos del ADN de especialidad, hace publicidad pagada (no con cafés)."
+ },
+ "marvingarcia_01": {
+  "total": 32,
+  "nicho": 5,
+  "zona": 0,
+  "tamano": 9,
+  "engagement": 5,
+  "autenticidad": 6,
+  "valores": 3,
+  "competencia": 4,
+  "penalizacion": 0,
+  "er": null,
+  "fake": null,
+  "verificado": true,
+  "explicacion": "Encaje bajo: humor/nightlife sin café ni comida, ubicación no declarada, tono fiesta/humor lejos del ADN de especialidad."
+ },
+ "checheree_": {
+  "total": 45,
+  "nicho": 5,
+  "zona": 13,
+  "tamano": 9,
+  "engagement": 5,
+  "autenticidad": 6,
+  "valores": 3,
+  "competencia": 4,
+  "penalizacion": 0,
+  "er": null,
+  "fake": null,
+  "verificado": true,
+  "explicacion": "Encaje bajo: humor/nightlife sin café ni comida, tono fiesta/humor lejos del ADN de especialidad, hace publicidad pagada (no con cafés)."
  }
 }

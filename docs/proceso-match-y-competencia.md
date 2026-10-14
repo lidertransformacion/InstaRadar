@@ -25,13 +25,13 @@ Script determinístico: `scripts/build-match.py docs/candidatos-medellin-v2.json
 
 | Factor | Peso | Regla |
 |---|---|---|
-| Nicho | 30 | café 30 · brunch/desayunos 27 · foodie 23 · bienestar 19 · fitness 16 · lifestyle 13 · moda/belleza 7 |
-| Zona | 20 | menciona Laureles/Provenza/El Poblado/Ciudad del Río 20 · Medellín confirmado 16 · Medellín 13 · Envigado/Sabaneta 11 · Medellín-Manizales 9 · solo "Colombia" 5 |
+| Nicho | 30 | café 30 · brunch/desayunos 27 · foodie 23 · bienestar 19 · fitness 16 · lifestyle 13 · moda/belleza 7 · humor/nightlife 5 |
+| Zona | 20 | sin ubicación 0 · menciona Laureles/Provenza/El Poblado/Ciudad del Río 20 · Medellín confirmado 16 · Medellín 13 · Envigado/Sabaneta 11 · Medellín-Manizales 9 · solo "Colombia" 5 |
 | Tamaño | 15 | 3K–15K 15 · 15–25K 13 · 1,5–3K 10 · 25–50K 9 · resto 6 · sin dato 4 |
 | Engagement | 10 | ER 3–10% 10 · 2–3% 8 · 1,5–2% 6 · <1,5% 4 · >10% 6 (atípico) · sin dato 5 |
 | Autenticidad | 10 | seguidores falsos (Modash) <15% 10 · 15–25% 7 · 25–35% 4 · >35% 2 · sin dato 6 |
-| Estética/valores | 10 | café 10 · experiencias/saludable/recetas/sostenible 8 · comida 7 · lifestyle/fitness 6 · moda/lujo 5 |
-| Competencia | 5 | sin relación visible 5 · sin dato 4 · ya mencionó a Pergamino 3 (afinidad, revisar exclusividad) |
+| Estética/valores | 10 | café 10 · experiencias/saludable/recetas/sostenible 8 · comida 7 · lifestyle/fitness 6 · moda/lujo 5 · humor/nightlife 3 |
+| Competencia | 5 | sin relación visible 5 · sin dato 4 · ya mencionó a Pergamino 3 (afinidad, revisar exclusividad) · hace publicidad pagada con otras marcas 4 |
 | Penalización | −5 | perfil no verificado (dato de terceros) |
 
 Límites conocidos: la zona del influencer casi nunca es pública a nivel barrio; ER y falsos solo existen para perfiles de Modash.
@@ -45,3 +45,6 @@ Límites conocidos: la zona del influencer casi nunca es pública a nivel barrio
 2. Analistas (API de Anthropic, salida JSON con esquema fijo, temperatura 0): (a) clasificar nicho/valores desde bio y captions; (b) ficha de competidor; (c) resumen por tienda. Cada campo exige `fuente` o "Sin verificar".
 3. Puntaje: siempre con `build-match.py` (sin LLM) para que sea reproducible.
 4. Repetir por ciudad (Chile la próxima semana) cambiando solo la lista de tiendas y el radio.
+
+## Perfiles pedidos por Santiago (13-oct)
+trululupripra02, marvingarcia_01 y checheree_: verificados en IG (solo lectura), fuente "pedido por Santiago". Son humor/nightlife sin café ni comida; el modelo los deja en la parte baja (51, 45 y 32). ER sin calcular: solo hay rangos de likes, no promedios.
