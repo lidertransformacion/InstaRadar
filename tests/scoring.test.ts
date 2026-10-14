@@ -1,8 +1,106 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CITIES, SAMPLE_PROFILES, type SeedProfile } from "@/lib/catalog";
+import { DEFAULT_CITIES } from "@/lib/catalog";
 import { engagementRate, scoreProfile, type ScoreInput } from "@/lib/scoring";
 
-function inputFrom(profile: SeedProfile, captions = profile.captions): ScoreInput {
+type Fixture = {
+  username: string;
+  bio: string;
+  followers: number;
+  following: number;
+  postsCount: number;
+  cityId: string;
+  zone: string;
+  captions: string[];
+  likes: number;
+  comments: number;
+  daysAgo: number[];
+};
+
+const FIXTURES: Fixture[] = [
+  {
+    username: "luna.mesa",
+    bio: "Brunch, café de especialidad y tardes en Laureles.",
+    followers: 18400,
+    following: 620,
+    postsCount: 248,
+    cityId: "medellin",
+    zone: "Laureles",
+    likes: 780,
+    comments: 46,
+    daysAgo: [2, 6, 11, 16, 23],
+    captions: [
+      "Domingo de brunch en Laureles. Huevos y flat white.",
+      "Nuevo filtro de origen. Café de la semana en el barrio.",
+      "Mesa larga, croissant y latte.",
+      "Paseo corto y espresso antes del almuerzo.",
+      "Desayuno lento y otro café.",
+    ],
+  },
+  {
+    username: "vale.provenza",
+    bio: "Ciudad, mesas y algo de café. Provenza.",
+    followers: 22100,
+    following: 980,
+    postsCount: 340,
+    cityId: "medellin",
+    zone: "Provenza",
+    likes: 160,
+    comments: 32,
+    daysAgo: [4, 12, 20, 28],
+    captions: [
+      "Tarde en Provenza, outfit y una mesa.",
+      "Paseo por el barrio.",
+      "Un latte entre diligencias.",
+      "Domingo sin planes en la ciudad.",
+    ],
+  },
+  {
+    username: "con.pergamino",
+    bio: "Café y brunch en El Poblado.",
+    followers: 15100,
+    following: 700,
+    postsCount: 220,
+    cityId: "medellin",
+    zone: "El Poblado",
+    likes: 690,
+    comments: 40,
+    daysAgo: [3, 8, 14, 21],
+    captions: [
+      "Brunch largo y un flat white.",
+      "Gracias @pergaminocafe por la mesa de hoy.",
+      "Café de especialidad en El Poblado.",
+      "Desayuno con croissant.",
+    ],
+  },
+  {
+    username: "sigue.a.todos",
+    bio: "",
+    followers: 6000,
+    following: 18500,
+    postsCount: 4,
+    cityId: "medellin",
+    zone: "El Poblado",
+    likes: 4200,
+    comments: 80,
+    daysAgo: [1, 2],
+    captions: ["Follow back", "Follow back"],
+  },
+  {
+    username: "noche.poblado",
+    bio: "Música, barra y planes de noche.",
+    followers: 15000,
+    following: 800,
+    postsCount: 400,
+    cityId: "medellin",
+    zone: "El Poblado",
+    likes: 200,
+    comments: 15,
+    daysAgo: [2, 5, 9, 13],
+    captions: ["La barra de anoche.", "DJ set y luces.", "Otro after en la 10.", "Lista para salir."],
+  },
+];
+
+function inputFrom(profile: Fixture, captions = profile.captions): ScoreInput {
   const city = DEFAULT_CITIES.find((item) => item.id === profile.cityId);
   if (!city) throw new Error(profile.cityId);
   const now = Date.parse("2026-10-13T12:00:00.000Z");
@@ -26,7 +124,7 @@ function inputFrom(profile: SeedProfile, captions = profile.captions): ScoreInpu
 }
 
 function scoreName(username: string, captions?: string[]) {
-  const profile = SAMPLE_PROFILES.find((item) => item.username === username);
+  const profile = FIXTURES.find((item) => item.username === username);
   if (!profile) throw new Error(username);
   return scoreProfile(inputFrom(profile, captions));
 }
@@ -57,7 +155,7 @@ describe("scoreProfile", () => {
     const withCollab = scoreName("con.pergamino");
     const without = scoreName(
       "con.pergamino",
-      SAMPLE_PROFILES.find((item) => item.username === "con.pergamino")!.captions.map((caption) =>
+      FIXTURES.find((item) => item.username === "con.pergamino")!.captions.map((caption) =>
         caption.replace("@pergaminocafe", "la tienda"),
       ),
     );

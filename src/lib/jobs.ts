@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { BrowserContext } from "playwright";
-import { sampleStudy, summarizeCompetitor } from "@/lib/competitor";
+import { summarizeCompetitor } from "@/lib/competitor";
 import {
   attemptsToday,
   getCity,
@@ -71,7 +71,7 @@ export async function startSearch(): Promise<{ ok: boolean; message: string }> {
     status: "running",
     cityId: city.id,
     mode: settings.mockMode ? "mock" : "live",
-    message: settings.mockMode ? "Preparando la revisión de ejemplo…" : "Abriendo el navegador…",
+    message: settings.mockMode ? "Simulando el ritmo de búsqueda…" : "Abriendo el navegador…",
     seen: 0,
     kept: 0,
   });
@@ -148,7 +148,7 @@ export async function startStudy(rawUsername: string): Promise<{ ok: boolean; me
     cityId,
     mode: settings.mockMode ? "mock" : "live",
     message: settings.mockMode
-      ? `Armando un estudio de ejemplo de @${username}…`
+      ? "El modo demo no inventa cifras de la competencia."
       : `Leyendo @${username}…`,
     seen: 0,
     kept: 0,
@@ -296,7 +296,7 @@ async function runMock(city: CityBundle, settings: Settings, signal: AbortSignal
   }
   setRun({
     status: "done",
-    message: "Listo. Revisión de ejemplo terminada.",
+    message: "Listo. Simulé el ritmo y no agregué perfiles.",
     seen,
     kept: seen,
     cityId: city.id,
@@ -311,9 +311,11 @@ async function executeStudy(
   signal: AbortSignal,
 ): Promise<void> {
   if (settings.mockMode) {
-    await sleep(700, signal);
-    saveStudy(sampleStudy(username, cityId));
-    setRun({ status: "done", message: `Estudio de ejemplo de @${username} listo.` });
+    await sleep(400, signal);
+    setRun({
+      status: "done",
+      message: "El modo demo no inventa un estudio. Apágalo para leer la cuenta real.",
+    });
     return;
   }
   const context = await researchContext(settings);
@@ -327,6 +329,7 @@ async function executeStudy(
   const study = {
     ...summarizeCompetitor(username, cityId, posts, new Date().toISOString()),
     mock: false,
+    account: null,
   };
   saveStudy(study);
   setRun({ status: "done", message: `Listo el estudio de @${username}.` });

@@ -1,15 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { DEFAULT_CITIES, DEFAULT_SETTINGS } from "@/lib/catalog";
 import {
-  DEFAULT_CITIES,
-  DEFAULT_SETTINGS,
-  SAMPLE_PROFILES,
-  daysAgoIso,
-  type SeedProfile,
-} from "@/lib/catalog";
-import { sampleStudy } from "@/lib/competitor";
-import { buildInvitation } from "@/lib/drafts";
+  matchCity,
+  parseResearchJson,
+  planCompetitorStudy,
+  planProfiles,
+  ResearchFileError,
+} from "@/lib/ingest";
 import { readPriceFile } from "@/lib/prices";
 import { scoreProfile, type ScoreResult } from "@/lib/scoring";
 import { dayStartIso, hourAgoIso } from "@/lib/pacing";
@@ -190,47 +189,77 @@ function seedIfEmpty(db: DatabaseSync): void {
     );
     db.prepare(
       `INSERT INTO run_state (id, status, message, city_id, mode, seen, kept, updated_at)
-       VALUES (1, 'idle', ?, 'medellin', 'mock', 0, 0, ?)`,
-    ).run("Datos de ejemplo listos.", now);
+       VALUES (1, 'idle', ?, 'medellin', NULL, 0, 0, ?)`,
+    ).run("Sin perfiles todavía.", now);
     db.prepare("INSERT INTO send_gate (id, next_send_at) VALUES (1, NULL)").run();
 
     for (const city of DEFAULT_CITIES) insertCity(db, city);
-    for (const profile of SAMPLE_PROFILES) insertSeedProfile(db, profile);
-
-    const medellin = getCity(db, "medellin");
-    const ranked = listProfileRows(db, "medellin");
-    const wanted = ["luna.mesa", "andres.filtro", "camila.horno"];
-    wanted.forEach((username, index) => {
-      const profile = ranked.find((row) => row.username === username);
-      if (!profile || !medellin) return;
-      const shop = medellin.shops[index === 0 ? 0 : 1] ?? medellin.shops[0];
-      const seed = SAMPLE_PROFILES.find((item) => item.username === username);
-      if (!seed || !shop) return;
-      const body = buildInvitation({
-        fullName: seed.fullName,
-        username: seed.username,
-        zone: seed.zone,
-        bio: seed.bio,
-        captions: seed.captions,
-        shop,
-      });
-      const status = index === 0 ? "approved" : "draft";
+    const bundled = path.join(dataDir(), "real", "medellin.json");
+    if (fs.existsSync(bundled)) {
+      const result = importResearch(db, fs.readFileSync(bundled, "utf8"));
       db.prepare(
-        `INSERT INTO drafts (profile_id, body, shop_name, status, error, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NULL, ?, ?)`,
-      ).run(profile.id, body, shop.name, status, now, now);
-    });
-
-    const study = sampleStudy("pergaminocafe", "medellin");
-    db.prepare(
-      `INSERT INTO studies (username, city_id, payload, created_at) VALUES (?, ?, ?, ?)`,
-    ).run(study.username, study.cityId, JSON.stringify(study), study.studiedAt);
+        `UPDATE run_state SET message = ?, seen = ?, kept = ?, updated_at = ? WHERE id = 1`,
+      ).run(result.message, result.added + result.updated, result.added + result.updated, now);
+    }
 
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
   }
+}
+
+export type ImportResult = {
+  cityId: string;
+  added: number;
+  updated: number;
+  message: string;
+};
+
+export function importResearch(db: DatabaseSync, raw: string): ImportResult {
+  const file = parseResearchJson(raw);
+  const cities = all(db, "SELECT id FROM cities").map((row) => getCity(db, String(row.id)));
+  const known = cities.filter((city): city is CityBundle => city != null);
+  const city = matchCity(file.city, known);
+  if (!city) {
+    throw new ResearchFileError(
+      `No conozco la ciudad "${file.city}". Usa ${known.map((item) => item.name).join(" o ") || "una ciudad del radar"}.`,
+    );
+  }
+  const competitorName =
+    file.competitors[0]?.username || city.competitor || "";
+  if (competitorName && competitorName !== city.competitor) {
+    db.prepare("UPDATE cities SET competitor = ? WHERE id = ?").run(competitorName, city.id);
+    city.competitor = competitorName;
+  }
+  const profiles = planProfiles(file, city, competitorName);
+  let added = 0;
+  let updated = 0;
+  for (const profile of profiles) {
+    const prior = one(db, "SELECT id FROM profiles WHERE username = ?", profile.username);
+    saveProfile(db, profile);
+    if (prior) updated += 1;
+    else added += 1;
+  }
+  const competitor = file.competitors[0];
+  if (competitor) {
+    const studiedAt = file.collectedAt
+      ? new Date(`${file.collectedAt}T12:00:00.000Z`).toISOString()
+      : new Date().toISOString();
+    const study = planCompetitorStudy(
+      competitor,
+      city.id,
+      Number.isNaN(Date.parse(studiedAt)) ? new Date().toISOString() : studiedAt,
+    );
+    db.prepare(
+      `INSERT INTO studies (username, city_id, payload, created_at) VALUES (?, ?, ?, ?)`,
+    ).run(study.username, study.cityId, JSON.stringify(study), study.studiedAt);
+  }
+  const message =
+    updated === 0
+      ? `Cargué ${added} perfiles en ${city.name}.`
+      : `Cargué ${added} perfiles nuevos y actualicé ${updated} en ${city.name}.`;
+  return { cityId: city.id, added, updated, message };
 }
 
 function insertCity(db: DatabaseSync, city: CityBundle): void {
@@ -249,29 +278,6 @@ function insertCity(db: DatabaseSync, city: CityBundle): void {
     "INSERT INTO shops (city_id, zone, name, address) VALUES (?, ?, ?, ?)",
   );
   for (const item of city.shops) shop.run(city.id, item.zone, item.name, item.address);
-}
-
-function insertSeedProfile(db: DatabaseSync, profile: SeedProfile): void {
-  saveProfile(db, {
-    username: profile.username,
-    fullName: profile.fullName,
-    bio: profile.bio,
-    followers: profile.followers,
-    following: profile.following,
-    postsCount: profile.postsCount,
-    cityId: profile.cityId,
-    zone: profile.zone,
-    source: profile.source,
-    sample: true,
-    isPrivate: false,
-    posts: profile.captions.map((caption, index) => ({
-      caption,
-      likes: profile.likes,
-      comments: profile.comments,
-      takenAt: daysAgoIso(profile.daysAgo[index] ?? index),
-      mediaType: "image",
-    })),
-  });
 }
 
 export type StoredPost = {

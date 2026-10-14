@@ -250,6 +250,9 @@ function buildReason(input: {
   if (input.authenticity <= 6) {
     return oneLine("El engagement no cuadra con el tamaño de la cuenta.");
   }
+  if (input.competitor && input.content < 8) {
+    return oneLine(`Poca conversación de café, y ya aparece con @${input.competitor}.`);
+  }
   if (input.content < 8) {
     return oneLine("Poca conversación de café, brunch o comida local.");
   }

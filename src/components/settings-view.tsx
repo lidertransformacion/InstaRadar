@@ -18,7 +18,7 @@ export function SettingsView(props: {
     watches?: string[];
     shops?: Shop[];
   }) => void;
-  onClear: () => void;
+  onImport: (raw: string) => void;
   onLogin: (kind: "research" | "outreach") => void;
 }) {
   const { settings } = props.state;
@@ -41,7 +41,7 @@ export function SettingsView(props: {
       <section className="rounded-2xl border border-border bg-card p-4">
         <Toggle
           label="Modo demo"
-          hint="Usa datos de ejemplo y no abre Instagram."
+          hint="Simula el ritmo de búsqueda y no abre Instagram. No inventa perfiles."
           checked={settings.mockMode}
           onChange={(mockMode) => props.onSettings({ mockMode })}
         />
@@ -300,10 +300,30 @@ export function SettingsView(props: {
           >
             Guardar ciudad
           </Button>
-          <Button type="button" variant="outline" className="h-10" onClick={props.onClear}>
-            Quitar ejemplos de esta ciudad
-          </Button>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-sm">Cargar investigación</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Un JSON con ciudad, competencia e influencers. Si el usuario ya está, se actualiza.
+        </p>
+        <label className="mt-3 inline-flex">
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (!file) return;
+              void file.text().then((raw) => props.onImport(raw));
+            }}
+          />
+          <span className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-border bg-background px-3 text-sm">
+            Subir JSON
+          </span>
+        </label>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">

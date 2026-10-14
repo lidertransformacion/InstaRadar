@@ -117,14 +117,15 @@ export function Panel() {
     await load();
   }
 
-  async function clearSamples() {
-    const response = await fetch("/api/settings", {
-      method: "PUT",
+  async function importFile(raw: string) {
+    const response = await fetch("/api/import", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clearSamples: true, cityId: state?.settings.cityId }),
+      body: raw,
     });
-    if (!response.ok) setNotice("No pude quitar los ejemplos.");
-    else setNotice("Quité los perfiles de ejemplo de esta ciudad.");
+    const payload = await readJson(response);
+    if (!response.ok) setNotice(String(payload.error ?? "No pude cargar el archivo."));
+    else setNotice(String(payload.message ?? "Archivo cargado."));
     await load();
   }
 
@@ -234,7 +235,7 @@ export function Panel() {
                 city={city}
                 onSettings={(patch) => void saveSettings(patch)}
                 onCatalog={(catalog) => void saveCatalog(city.id, catalog)}
-                onClear={() => void clearSamples()}
+                onImport={(raw) => void importFile(raw)}
                 onLogin={(kind) => void post("/api/search", { action: "login", kind })}
               />
             ) : (

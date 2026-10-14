@@ -124,6 +124,17 @@ export type HandleCount = {
   posts: number;
 };
 
+export type CompetitorAccount = {
+  displayName: string;
+  followers: number;
+  following: number;
+  posts: number;
+  bio: string;
+  address: string;
+  highlights: string[];
+  url: string;
+};
+
 export type CompetitorStudy = {
   username: string;
   cityId: string;
@@ -137,6 +148,7 @@ export type CompetitorStudy = {
   topPosts: StudyPost[];
   collaborators: HandleCount[];
   commenters: HandleCount[];
+  account: CompetitorAccount | null;
 };
 
 export type RunView = {

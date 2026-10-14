@@ -48,11 +48,42 @@ export function CompetitorView(props: {
         </p>
       ) : (
         <>
-          {study.mock ? (
-            <p className="text-xs text-muted-foreground">
-              Cifras de ejemplo. No salen de la cuenta real.
-            </p>
+          {study.account ? (
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-heading text-2xl tracking-tight">{study.account.displayName}</p>
+                  <a
+                    href={study.account.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-muted-foreground"
+                  >
+                    @{study.username}
+                  </a>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <Fact label="Seguidores" value={formatFollowers(study.account.followers)} />
+                <Fact label="Sigue" value={formatFollowers(study.account.following)} />
+                <Fact label="Publicaciones" value={formatFollowers(study.account.posts)} />
+              </div>
+              {study.account.bio ? <p className="mt-3 text-sm">{study.account.bio}</p> : null}
+              {study.account.address ? (
+                <p className="mt-1 text-sm text-muted-foreground">{study.account.address}</p>
+              ) : null}
+              {study.account.highlights.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {study.account.highlights.map((item) => (
+                    <span key={item} className="rounded-full bg-secondary px-2.5 py-1 text-xs">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </section>
           ) : null}
+          {study.account ? null : (
           <section className="rounded-2xl border border-border bg-card p-4">
             <p className="font-heading text-2xl tracking-tight">@{study.username}</p>
             <p className="mt-2 text-sm">{study.summary}</p>
@@ -62,7 +93,9 @@ export function CompetitorView(props: {
               <Fact label="Comentarios" value={study.audience} />
             </div>
           </section>
+          )}
 
+          {study.formats.some((format) => format.count > 0) ? (
           <section className="rounded-2xl border border-border bg-card p-4">
             <p className="text-sm">Formatos</p>
             <div className="mt-3 space-y-2">
@@ -82,7 +115,9 @@ export function CompetitorView(props: {
               ))}
             </div>
           </section>
+          ) : null}
 
+          {study.topPosts.length > 0 ? (
           <section className="space-y-2">
             <p className="px-1 text-sm">Piezas con más respuesta</p>
             {study.topPosts.map((post) => (
@@ -103,11 +138,14 @@ export function CompetitorView(props: {
               </a>
             ))}
           </section>
+          ) : null}
 
+          {study.collaborators.length > 0 || study.commenters.length > 0 ? (
           <section className="grid gap-3 sm:grid-cols-2">
             <People title="Colaboradores" people={study.collaborators} empty="No vi etiquetas en la muestra." />
             <People title="Quienes comentan" people={study.commenters} empty="Nadie se repite en los comentarios." />
           </section>
+          ) : null}
         </>
       )}
 
