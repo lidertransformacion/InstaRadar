@@ -1,0 +1,12 @@
+{
+  "currency": "COP",
+  "updated": "2026-10-01",
+  "note": "Referencia editada a mano para comparar. No es una lista oficial.",
+  "rows": [
+    { "item": "Espresso", "libertario": "5.000", "competitor": "5.500", "notes": "sala" },
+    { "item": "Latte", "libertario": "9.000", "competitor": "9.800", "notes": "" },
+    { "item": "Cappuccino", "libertario": "9.000", "competitor": "9.500", "notes": "" },
+    { "item": "Filtrado del día", "libertario": "8.000", "competitor": "8.500", "notes": "" },
+    { "item": "Desayuno", "libertario": "28.000", "competitor": "32.000", "notes": "plato base" }
+  ]
+}
