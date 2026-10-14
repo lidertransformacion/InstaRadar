@@ -1,5 +1,13 @@
 import fs from "node:fs";
 import { chromium, type BrowserContext, type Page } from "playwright";
+import {
+  AVATAR_GAP,
+  avatarFetchAllowed,
+  hasCachedAvatar,
+  instagramCdnUrl,
+  savedAvatarsThisRun,
+  writeAvatarFile,
+} from "@/lib/avatars";
 import { resolveChromePath } from "@/lib/chrome";
 import type { StoredPost, StoredProfile } from "@/lib/db";
 import {
@@ -45,6 +53,7 @@ type Snapshot = {
   header: string;
   article: string;
   body: string;
+  avatar: string;
 };
 
 const POSTS_PER_TAG = 6;
@@ -337,6 +346,7 @@ async function inspectProfile(
         settings.minFollowers,
         settings.maxFollowers,
       );
+      const avatarUrl = await saveAvatarFromOpenProfile(page, username, snapshot.avatar, signal);
       const posts: StoredPost[] = [];
       if (!isPrivate && inRange) {
         const paths = postPathsFromHrefs(snapshot.hrefs).slice(0, POSTS_PER_PROFILE);
@@ -374,6 +384,7 @@ async function inspectProfile(
         followersSource: "",
         evidenceUrl: "",
         notes: "",
+        avatarUrl,
         posts,
       };
     } catch (error) {
@@ -395,6 +406,32 @@ function inferZone(text: string, city: CityBundle): string | null {
       return name.length > 2 && blob.includes(name);
     })?.name ?? null
   );
+}
+
+async function saveAvatarFromOpenProfile(
+  page: Page,
+  username: string,
+  imageUrl: string,
+  signal: AbortSignal,
+): Promise<string> {
+  try {
+    const allowed = avatarFetchAllowed({
+      platform: process.platform,
+      headless: process.env.RADAR_HEADLESS === "1",
+      cached: hasCachedAvatar(username),
+      savedThisRun: savedAvatarsThisRun(),
+    });
+    if (!allowed || !instagramCdnUrl(imageUrl)) return "";
+    await sleep(randomDelayMs(AVATAR_GAP), signal);
+    const response = await page.request.get(imageUrl, { timeout: 20_000 });
+    if (!response.ok()) return "";
+    const bytes = Buffer.from(await response.body());
+    if (!writeAvatarFile(username, bytes)) return "";
+    return imageUrl;
+  } catch (error) {
+    if (error instanceof RadarPause || isAbortError(error)) throw error;
+    return "";
+  }
 }
 
 function guardCaps(settings: Settings): void {
@@ -455,6 +492,9 @@ async function readSnapshot(page: Page): Promise<Snapshot> {
     );
     const og =
       document.querySelector('meta[property="og:description"]')?.getAttribute("content") || "";
+    const headerImage = document.querySelector("header img")?.getAttribute("src") || "";
+    const ogImage =
+      document.querySelector('meta[property="og:image"]')?.getAttribute("content") || "";
     return {
       hrefs,
       og,
@@ -462,6 +502,7 @@ async function readSnapshot(page: Page): Promise<Snapshot> {
       header: document.querySelector("header")?.innerText?.slice(0, 2000) || "",
       article: document.querySelector("article")?.innerText?.slice(0, 4000) || "",
       body: document.body?.innerText?.slice(0, 2500) || "",
+      avatar: headerImage || ogImage,
     };
   });
 }

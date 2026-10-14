@@ -1,3 +1,4 @@
+import { cleanAvatarUrl } from "@/lib/avatars";
 import { formatFollowers } from "@/lib/format";
 import { parseCompactNumber } from "@/lib/parse";
 import { fold, cleanUsername } from "@/lib/text";
@@ -32,6 +33,7 @@ export type ResearchInfluencer = {
   followersSource: string;
   evidenceUrl: string;
   notes: string;
+  avatarUrl: string;
 };
 
 export type ResearchFile = {
@@ -159,6 +161,7 @@ function parseInfluencer(value: unknown, index: number): ResearchInfluencer {
     followersSource: asText(row.followers_source),
     evidenceUrl: asText(row.evidence_url),
     notes,
+    avatarUrl: cleanAvatarUrl(asText(row.avatar_url)),
   };
 }
 
@@ -206,6 +209,7 @@ export function planProfiles(
       followersSource: person.followersSource,
       evidenceUrl: person.evidenceUrl,
       notes: person.notes,
+      avatarUrl: person.avatarUrl,
       posts: captions.map((caption) => ({
         caption,
         likes: 0,

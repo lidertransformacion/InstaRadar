@@ -10,6 +10,7 @@ import {
   ResearchFileError,
 } from "@/lib/ingest";
 import { readPriceFile } from "@/lib/prices";
+import { cachedAvatarUrl } from "@/lib/avatars";
 import { fakeFollowerShare, scoreProfile, type ScoreResult } from "@/lib/scoring";
 import { dayStartIso, hourAgoIso } from "@/lib/pacing";
 import type {
@@ -100,7 +101,8 @@ function migrate(db: DatabaseSync): void {
       verified INTEGER NOT NULL DEFAULT 1,
       followers_source TEXT NOT NULL DEFAULT '',
       evidence_url TEXT NOT NULL DEFAULT '',
-      notes TEXT NOT NULL DEFAULT ''
+      notes TEXT NOT NULL DEFAULT '',
+      avatar_url TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY,
@@ -193,7 +195,8 @@ const PROFILE_TABLE = `
     verified INTEGER NOT NULL DEFAULT 1,
     followers_source TEXT NOT NULL DEFAULT '',
     evidence_url TEXT NOT NULL DEFAULT '',
-    notes TEXT NOT NULL DEFAULT ''
+    notes TEXT NOT NULL DEFAULT '',
+    avatar_url TEXT NOT NULL DEFAULT ''
   )`;
 
 function ensureProfileShape(db: DatabaseSync): void {
@@ -202,11 +205,16 @@ function ensureProfileShape(db: DatabaseSync): void {
   const names = new Set(columns.map((column) => String(column.name)));
   const followers = columns.find((column) => column.name === "followers");
   const nullable = followers != null && Number(followers.notnull) === 0;
-  const complete =
+  const shaped =
     names.has("verified") &&
     names.has("followers_source") &&
     names.has("evidence_url") &&
     names.has("notes");
+  if (nullable && shaped && !names.has("avatar_url")) {
+    db.exec("ALTER TABLE profiles ADD COLUMN avatar_url TEXT NOT NULL DEFAULT ''");
+    return;
+  }
+  const complete = shaped && names.has("avatar_url");
   if (nullable && complete) return;
 
   db.exec("PRAGMA foreign_keys = OFF;");
@@ -218,12 +226,12 @@ function ensureProfileShape(db: DatabaseSync): void {
         `INSERT INTO profiles_next (
           id, username, full_name, bio, followers, following, posts_count, city_id, zone,
           source, profile_url, is_private, sample, discovered_at, verified, followers_source,
-          evidence_url, notes
+          evidence_url, notes, avatar_url
         )
         SELECT
           id, username, full_name, bio, followers, following, posts_count, city_id, zone,
           source, profile_url, is_private, sample, discovered_at, verified, followers_source,
-          evidence_url, notes
+          evidence_url, notes, avatar_url
         FROM profiles`,
       );
     } else {
@@ -384,6 +392,7 @@ export type StoredProfile = {
   followersSource: string;
   evidenceUrl: string;
   notes: string;
+  avatarUrl: string;
 };
 
 export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
@@ -393,8 +402,8 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
     `INSERT INTO profiles (
       username, full_name, bio, followers, following, posts_count, city_id, zone,
       source, profile_url, is_private, sample, discovered_at, verified, followers_source,
-      evidence_url, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      evidence_url, notes, avatar_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(username) DO UPDATE SET
       full_name = excluded.full_name,
       bio = excluded.bio,
@@ -409,7 +418,11 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
       verified = excluded.verified,
       followers_source = excluded.followers_source,
       evidence_url = excluded.evidence_url,
-      notes = excluded.notes`,
+      notes = excluded.notes,
+      avatar_url = CASE
+        WHEN excluded.avatar_url <> '' THEN excluded.avatar_url
+        ELSE profiles.avatar_url
+      END`,
   ).run(
     profile.username,
     profile.fullName,
@@ -428,6 +441,7 @@ export function saveProfile(db: DatabaseSync, profile: StoredProfile): number {
     profile.followersSource,
     profile.evidenceUrl,
     profile.notes,
+    profile.avatarUrl,
   );
   const idRow = one(db, "SELECT id FROM profiles WHERE username = ?", profile.username);
   const id = Number(idRow?.id);
@@ -687,6 +701,7 @@ function toProfileCard(row: SqlRow): ProfileCard {
     followersSource: String(row.followers_source ?? ""),
     evidenceUrl: String(row.evidence_url ?? ""),
     notes: String(row.notes ?? ""),
+    avatarUrl: cachedAvatarUrl(String(row.username)) ?? "",
     profileUrl: String(row.profile_url),
     cityId: String(row.city_id),
     sample: Number(row.sample) === 1,

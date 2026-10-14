@@ -45,5 +45,6 @@ next-env.d.ts
 /data/*.sqlite-*
 /data/ig-profile/
 /data/ig-outreach-profile/
+/data/avatars/
 /test-results/
 /playwright-report/

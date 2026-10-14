@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { BrowserContext } from "playwright";
+import { resetAvatarRun } from "@/lib/avatars";
 import { summarizeCompetitor } from "@/lib/competitor";
 import {
   attemptsToday,
@@ -66,6 +67,7 @@ export async function startSearch(): Promise<{ ok: boolean; message: string }> {
 
   current.running = true;
   current.abort = new AbortController();
+  resetAvatarRun();
   const signal = current.abort.signal;
   setRun({
     status: "running",

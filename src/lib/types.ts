@@ -77,6 +77,8 @@ export type ProfileCard = {
   followersSource: string;
   evidenceUrl: string;
   notes: string;
+  /** Local cache URL. Empty until data/avatars/<username>.jpg exists. */
+  avatarUrl: string;
   profileUrl: string;
   cityId: string;
   sample: boolean;

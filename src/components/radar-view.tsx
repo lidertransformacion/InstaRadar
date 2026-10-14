@@ -233,20 +233,13 @@ function ProfileRow(props: {
   onInvite: () => void;
 }) {
   const { profile } = props;
-  const hue = avatarHue(profile.username);
   return (
     <article
       className="rise-in rounded-2xl border border-border bg-card px-3 py-3 sm:px-4"
       style={{ animationDelay: `${props.delay}ms` }}
     >
       <div className="flex items-start gap-3">
-        <div
-          className="grid size-11 shrink-0 place-items-center rounded-full text-sm font-medium text-white"
-          style={{ background: `oklch(0.48 0.08 ${hue})` }}
-          aria-hidden
-        >
-          {initials(profile.fullName, profile.username)}
-        </div>
+        <AvatarMark profile={profile} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -318,6 +311,33 @@ function ProfileRow(props: {
         </div>
       </div>
     </article>
+  );
+}
+
+function AvatarMark(props: { profile: ProfileCard }) {
+  const { profile } = props;
+  const [broken, setBroken] = useState(false);
+  const hue = avatarHue(profile.username);
+  if (profile.avatarUrl && !broken) {
+    return (
+      // The file is already local. onError returns to the initials circle.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={profile.avatarUrl}
+        alt=""
+        className="size-11 shrink-0 rounded-full object-cover"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className="grid size-11 shrink-0 place-items-center rounded-full text-sm font-medium text-white"
+      style={{ background: `oklch(0.48 0.08 ${hue})` }}
+      aria-hidden
+    >
+      {initials(profile.fullName, profile.username)}
+    </div>
   );
 }
 
