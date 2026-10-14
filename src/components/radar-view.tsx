@@ -281,6 +281,13 @@ function ProfileRow(props: {
             {profile.reason}
           </button>
           {match ? <p className="mt-1 text-xs leading-snug">{match.explicacion}</p> : null}
+          {match?.medicion ? (
+            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+              {match.medicion.disponible
+                ? `ER mediana ${match.medicion.er_mediana}% · promedio ${match.medicion.er_promedio}% · ${match.medicion.com_post} coment./post · ${match.medicion.etiqueta}${match.medicion.pod ? " · ojo: comentarios altos vs likes" : ""} · medido ${match.medicion.fecha} (${match.medicion.posts} posts)`
+                : `Engagement no disponible (${match.medicion.nota}) · medido 2026-10-13`}
+            </p>
+          ) : null}
           {props.open && match ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Match: Nicho {match.nicho}/30 · Zona {match.zona}/20 · Tamaño {match.tamano}/15 · Engagement{" "}

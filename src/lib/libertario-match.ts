@@ -13,6 +13,19 @@ export type LibertarioMatch = {
   er: number | null;
   fake: number | null;
   verificado: boolean;
+  medicion?: {
+    disponible: boolean;
+    nota?: string;
+    posts?: number;
+    er_mediana?: number;
+    er_promedio?: number;
+    com_post?: number;
+    virales?: number;
+    ratio_com_likes?: number;
+    etiqueta?: string;
+    fecha?: string;
+    pod?: boolean;
+  } | null;
   explicacion: string;
 };
 

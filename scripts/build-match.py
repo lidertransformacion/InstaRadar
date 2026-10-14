@@ -5,6 +5,33 @@ def num(f):
     if isinstance(f,(int,float)): return f
     s=str(f).lower().replace(',','.'); return float(s[:-1])*1000 if s.endswith('k') else float(s)
 def kw(t,*ws): return any(w in t for w in ws)
+
+import statistics, os
+ENG_FILE='docs/engagement-raw-2026-10-13.md'; ENG_DATE='2026-10-13'
+def load_engagement(path=ENG_FILE):
+    out={}
+    if not os.path.exists(path): return out
+    for line in open(path, encoding='utf-8'):
+        m=re.match(r'^([a-z0-9._]+) (\d+): (.+)$', line.strip())
+        if not m: continue
+        user, fol, rest = m.group(1), int(m.group(2)), m.group(3)
+        if 'ocultos' in rest: out[user]=dict(disponible=False, nota='likes ocultos'); continue
+        posts=[]
+        for tok in rest.split(','):
+            if '|' not in tok: continue
+            l,c=tok.split('|'); posts.append((int(l),int(c)))
+        if not posts: continue
+        ers=[(l+c)/fol*100 for l,c in posts]
+        likes=[l for l,_ in posts]; ml=statistics.median(likes)
+        virales=sum(1 for l in likes if l>3*ml)
+        ratio=statistics.median([c/l for l,c in posts if l>0])
+        med=statistics.median(ers)
+        etiqueta='atípico (>10%, alcance viral de reels)' if med>10 else 'alto' if med>=3 else 'medio' if med>=1 else 'bajo'
+        out[user]=dict(disponible=True, posts=len(posts), er_mediana=round(med,2), er_promedio=round(statistics.mean(ers),2),
+            com_post=round(statistics.mean(c for _,c in posts),1), virales=virales, ratio_com_likes=round(ratio,2),
+            etiqueta=etiqueta, fecha=ENG_DATE, pod=ratio>0.3)
+    return out
+ENG=load_engagement()
 out={}
 for i in d['influencers']:
     t=(' '.join(str(i.get(k) or '') for k in ('niche','bio','notes','display_name'))).lower()
@@ -37,15 +64,23 @@ for i in d['influencers']:
     elif 1500<=f<3000: s=10
     elif 25000<f<=50000: s=9
     else: s=6
-    # engagement 10
-    if er is None: e=5
+    # engagement 10 (mediana medida > ER Modash > neutro)
+    g=ENG.get(i['username'])
+    if g and g['disponible']:
+        er=g['er_mediana']
+        e=10 if er>=3 else 8 if er>=2 else 6 if er>=1 else 4 if er>=0.5 else 2
+        if g['virales']>=2: why.append(f"{g['virales']} posts virales inflan el promedio")
+        if g['pod']: e=min(e,4); why.append('comentarios desproporcionados vs likes (posible pod/sorteos)')
+    elif g: e=5; why.append('engagement no disponible (likes ocultos)')
+    elif er is None: e=5
     elif er>10: e=6; why.append(f'ER {er}% atípico')
     elif er>=3: e=10
     elif er>=2: e=8
     elif er>=1.5: e=6
     else: e=4
     # autenticidad 10
-    if ff is None: a=6
+    if g and g.get('pod'): a=3
+    elif ff is None: a=6
     elif ff<15: a=10
     elif ff<25: a=7
     elif ff<35: a=4; why.append(f'{ff}% seguidores falsos (Modash)')
@@ -66,7 +101,7 @@ for i in d['influencers']:
     pen=0 if i.get('verified') else 5
     total=max(0,min(100,n+z+s+e+a+v+c-pen))
     out[i['username']]=dict(total=total,nicho=n,zona=z,tamano=s,engagement=e,autenticidad=a,valores=v,competencia=c,penalizacion=pen,
-        er=er,fake=ff,verificado=bool(i.get('verified')),
-        explicacion=(('Encaje bajo: ' if n<=7 else 'Encaja por ')+', '.join(why[:3]) if why else 'Encaje moderado')+('.' if i.get('verified') else '. Dato de terceros: verificar perfil.'))
+        er=er,fake=ff,verificado=bool(i.get('verified')), medicion=g,
+        explicacion=(('Encaje bajo: ' if n<=7 else 'Encaja por ')+', '.join(why[:4]) if why else 'Encaje moderado')+('.' if i.get('verified') else '. Dato de terceros: verificar perfil.'))
 json.dump(out,open('src/data/match-libertario.json','w'),ensure_ascii=False,indent=1)
 for u,m in sorted(out.items(),key=lambda x:-x[1]['total']): print(m['total'],u,m['explicacion'])

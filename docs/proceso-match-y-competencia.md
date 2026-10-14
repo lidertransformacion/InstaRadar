@@ -48,3 +48,11 @@ Límites conocidos: la zona del influencer casi nunca es pública a nivel barrio
 
 ## Perfiles pedidos por Santiago (13-oct)
 trululupripra02, marvingarcia_01 y checheree_: verificados en IG (solo lectura), fuente "pedido por Santiago". Son humor/nightlife sin café ni comida; el modelo los deja en la parte baja (51, 45 y 32). ER sin calcular: solo hay rangos de likes, no promedios.
+
+## Engagement medido (13-oct-2026)
+Fuente: `docs/engagement-raw-2026-10-13.md` (12 últimos posts no fijados, likes|comentarios leídos del grid público; NA = post sin dato).
+- ER por post = (likes + comentarios) / seguidores × 100. Se reporta **mediana** y promedio; el puntaje usa **la mediana** (los virales no la inflan).
+- Virales = posts con likes > 3 × mediana de likes.
+- Señal de autenticidad: mediana de comentarios/likes. Lo normal es ~0,01–0,10; > 0,30 sugiere pods o sorteos → engagement máx. 4/10 y autenticidad 3/10.
+- Etiqueta (benchmarks micro-influencers, 1–3% normal): < 1% bajo · 1–3% medio · ≥ 3% alto · > 10% atípico (alcance viral de reels; no se premia extra).
+- Puntaje engagement (10): ≥3% 10 · 2–3% 8 · 1–2% 6 · 0,5–1% 4 · < 0,5% 2. Likes ocultos (santirfit) → "no disponible", 5 neutro. Sin medición propia → ER de Modash si existe.
