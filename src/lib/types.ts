@@ -67,12 +67,18 @@ export type ProfileCard = {
   username: string;
   fullName: string;
   zone: string | null;
-  followers: number;
-  following: number;
+  followers: number | null;
+  following: number | null;
   engagementRate: number;
   score: number;
   reason: string;
   source: string;
+  verified: boolean;
+  followersSource: string;
+  evidenceUrl: string;
+  notes: string;
+  /** Local cache URL. Empty until data/avatars/<username>.jpg exists. */
+  avatarUrl: string;
   profileUrl: string;
   cityId: string;
   sample: boolean;
@@ -124,6 +130,17 @@ export type HandleCount = {
   posts: number;
 };
 
+export type CompetitorAccount = {
+  displayName: string;
+  followers: number;
+  following: number;
+  posts: number;
+  bio: string;
+  address: string;
+  highlights: string[];
+  url: string;
+};
+
 export type CompetitorStudy = {
   username: string;
   cityId: string;
@@ -137,6 +154,7 @@ export type CompetitorStudy = {
   topPosts: StudyPost[];
   collaborators: HandleCount[];
   commenters: HandleCount[];
+  account: CompetitorAccount | null;
 };
 
 export type RunView = {

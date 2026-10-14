@@ -8,8 +8,15 @@ export async function GET(request: Request) {
   const min = Number(url.searchParams.get("min") ?? 0);
   const max = Number(url.searchParams.get("max") ?? Number.MAX_SAFE_INTEGER);
   const zone = url.searchParams.get("zone") || "";
+  const includeUnknown = url.searchParams.get("unknown") !== "0";
+  const verifiedOnly = url.searchParams.get("verified") === "1";
   const rows = listProfiles(cityId).filter((profile) => {
-    if (profile.followers < min || profile.followers > max) return false;
+    if (verifiedOnly && !profile.verified) return false;
+    if (profile.followers == null) {
+      if (!includeUnknown) return false;
+    } else if (profile.followers < min || profile.followers > max) {
+      return false;
+    }
     if (zone && profile.zone !== zone) return false;
     return true;
   });
@@ -33,8 +40,8 @@ export async function GET(request: Request) {
         profile.username,
         profile.fullName,
         profile.zone ?? "",
-        profile.followers,
-        profile.following,
+        profile.followers == null ? "sin dato" : profile.followers,
+        profile.following == null ? "" : profile.following,
         formatPercent(profile.engagementRate),
         profile.score,
         profile.reason,

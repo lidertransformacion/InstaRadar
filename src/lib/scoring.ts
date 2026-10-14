@@ -68,7 +68,21 @@ export type ScoreInput = {
   recentPosts: RecentPost[];
   postsCount: number;
   competitorUsernames: string[];
+  /** False when the account was found on the web and still needs an Instagram check. */
+  verified?: boolean;
+  /** Share of followers flagged as fake, from 0 to 1. */
+  fakeFollowerShare?: number | null;
 };
+
+export const UNVERIFIED_RANK_PENALTY = 4;
+
+export function fakeFollowerShare(notes: string): number | null {
+  const match = notes.match(/fake followers\s+([\d]+(?:[.,]\d+)?)\s*%/i);
+  if (!match) return null;
+  const value = Number(match[1].replace(",", "."));
+  if (!Number.isFinite(value)) return null;
+  return value / 100;
+}
 
 export type ScoreBreakdown = {
   content: number;
@@ -187,9 +201,18 @@ function authenticityPoints(
     flags.push("engagement poco creíble para el tamaño");
   }
 
-  if (input.postsCount < 8 && followers > 5000) {
+  if (input.postsCount >= 0 && input.postsCount < 8 && followers > 5000) {
     points -= 5;
     flags.push("pocas publicaciones para tantos seguidores");
+  }
+
+  const fake = input.fakeFollowerShare;
+  if (fake != null && fake >= 0.25) {
+    points -= 5;
+    flags.push("una parte alta de seguidores no parece real");
+  } else if (fake != null && fake >= 0.15) {
+    points -= 3;
+    flags.push("hay una señal de seguidores falsos");
   }
 
   if (!input.bio.trim()) {
@@ -250,6 +273,9 @@ function buildReason(input: {
   if (input.authenticity <= 6) {
     return oneLine("El engagement no cuadra con el tamaño de la cuenta.");
   }
+  if (input.competitor && input.content < 8) {
+    return oneLine(`Poca conversación de café, y ya aparece con @${input.competitor}.`);
+  }
   if (input.content < 8) {
     return oneLine("Poca conversación de café, brunch o comida local.");
   }
@@ -284,13 +310,15 @@ export function scoreProfile(input: ScoreInput): ScoreResult {
   const frequency = frequencyPoints(postsPerWeek(input.recentPosts));
   const competitor = matchedCompetitor(docs, input.competitorUsernames);
   const penalty = competitor ? 8 : 0;
+  const review = input.verified === false ? UNVERIFIED_RANK_PENALTY : 0;
 
-  const score = Math.round(
+  const fit = Math.round(
     clamp(content + location + engagement + authenticity + frequency - penalty, 0, 100),
   );
+  const score = Math.max(0, fit - review);
 
   const reason = buildReason({
-    score,
+    score: fit,
     zone: input.zone,
     cityName: input.cityName,
     engagementRate: rate,

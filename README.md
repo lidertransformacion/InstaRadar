@@ -35,7 +35,7 @@ make run
 
 Abre [http://127.0.0.1:3847](http://127.0.0.1:3847). Otro puerto: `PORT=4321 make run`.
 
-La primera vez carga datos de ejemplo de Medellín y Santiago, con el modo demo encendido. Así se puede ver el panel sin entrar a Instagram. Los puntajes de esos perfiles salen del mismo analista que se usa en una búsqueda real.
+La primera vez carga la investigación real de Medellín que está en `data/real/medellin.json` y puntúa esos perfiles. Santiago queda vacío hasta que cargues un archivo o busques. El modo demo viene apagado: si lo enciendes, solo simula el ritmo y no inventa cuentas.
 
 ## Entrar a Instagram la primera vez
 
@@ -55,7 +55,7 @@ El control de seguidores es el rango que usa la búsqueda para decidir a quién 
 
 ## Competencia y precios
 
-En Competencia el valor inicial en Medellín es `@pergaminocafe`. Puedes cambiarlo. En modo demo el estudio es de ejemplo y lo dice en pantalla. Con el demo apagado, lee la cuenta pública con el mismo navegador de investigación.
+En Competencia el valor inicial en Medellín es `@pergaminocafe`, con las cifras del archivo (161.000 seguidores y 3.187 publicaciones). Puedes cambiar la cuenta. Con el demo apagado, **Analizar** lee la cuenta pública con el navegador de investigación.
 
 Los precios no se buscan en internet. Edita `data/prices.json` o apunta en Ajustes a `data/prices.csv`. El CSV usa las columnas `item,libertario,competitor,notes`. Al guardar el archivo, la tabla se actualiza sola.
 
@@ -73,11 +73,21 @@ Si más adelante quieres enviarlo:
 4. Apaga el modo demo y enciende **Permitir envío**.
 5. Aprueba el borrador y confirma cada envío a mano.
 
-Hay un tope de 15 mensajes al día y una espera al azar de 3 a 8 minutos entre uno y otro. Un fallo también cuenta para el tope. Los perfiles de ejemplo no se pueden escribir.
+Hay un tope de 15 mensajes al día y una espera al azar de 3 a 8 minutos entre uno y otro. Un fallo también cuenta para el tope.
+
+## Cargar una investigación
+
+En Ajustes, **Subir JSON**. O desde la terminal, con el radar detenido o en marcha (escribe en la misma base):
+
+```bash
+make import FILE=data/real/medellin.json
+```
+
+El archivo trae `city`, `competitors` e `influencers` (`username`, `url`, `display_name`, `followers`, `following`, `posts`, `bio`, `location`, `niche`, `mentioned_pergamino`, `verified`, `source`, `followers_source`, `evidence_url`, `notes`, `avatar_url`). Los seguidores pueden venir como número, como `6.4k` o vacíos. `verified: false` es una cuenta hallada en la web que todavía no se revisó en Instagram: el radar la marca **Por verificar**, la deja un poco más abajo y, si las notas traen un porcentaje de seguidores falsos, lo usa en el puntaje. En el panel, **Verificados** oculta esas cuentas y **Incluir sin dato** (encendido) muestra las que no tienen seguidores; el control de seguidores no las esconde salvo que lo apagues. Si el usuario ya existe, se actualiza. Una mención a Pergamino baja el puntaje y el motivo lo dice. `avatar_url` se guarda, pero la tarjeta no pide esa dirección: la foto sale de `data/avatars/<usuario>.jpg`. Esa copia solo se escribe en el Mac, con el Chrome de investigación, cuando la búsqueda ya abrió el perfil. Espera unos segundos entre fotos y para a las 8 por búsqueda. No descarga la lista entera. Sin archivo, la tarjeta muestra las iniciales.
 
 ## Datos
 
-Todo vive en `data/radar.sqlite`. Para respaldo, copia la carpeta `data/` con la app detenida. **Quitar ejemplos de esta ciudad** borra solo los perfiles marcados como ejemplo.
+Todo vive en `data/radar.sqlite`. Para respaldo, copia la carpeta `data/` con la app detenida. El JSON de `data/real/` es la fuente que se carga en una base nueva.
 
 ## Exponerlo después con Cloudflare
 
