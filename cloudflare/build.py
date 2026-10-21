@@ -10,6 +10,13 @@ import base64, json, os
 
 DB_ID = "99b24b6d-cc75-4cb3-ae45-8ff9352e1702"
 DIST = "cloudflare/dist"
+# Meta keys for the cloud daily-search toggle and the last import.
+# Values are JSON: false, null, and 0 until a run or a POST /api/daily-search changes them.
+DAILY_SEARCH_DEFAULTS = {
+    "daily_search_enabled": False,
+    "daily_search_last_run_at": None,
+    "daily_search_last_run_new": 0,
+}
 TYPES = {"html": "text/html; charset=utf-8", "js": "application/javascript", "css": "text/css",
          "txt": "text/plain; charset=utf-8", "svg": "image/svg+xml", "png": "image/png", "ico": "image/x-icon",
          "jpg": "image/jpeg", "woff2": "font/woff2", "webmanifest": "application/manifest+json"}
@@ -19,11 +26,19 @@ def q(s):
     return "'" + s.replace("'", "''") + "'"
 
 
+def ensure_daily_search_keys(state):
+    """Create the daily search meta keys when a Mac state dump does not already carry them."""
+    for key, value in DAILY_SEARCH_DEFAULTS.items():
+        state.setdefault(key, value)
+    return state
+
+
 def seed():
     state = json.load(open(f"{DIST}/state.json"))
     profiles = state.pop("profiles")
     state["drafts"] = []
     state["run"] = {**state["run"], "status": "idle", "message": "Versión en la nube: solo lectura."}
+    ensure_daily_search_keys(state)
     sql = ["DROP TABLE IF EXISTS profiles;", "DROP TABLE IF EXISTS meta;",
            "CREATE TABLE profiles (username TEXT PRIMARY KEY, city_id TEXT NOT NULL, data TEXT NOT NULL);",
            "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);"]

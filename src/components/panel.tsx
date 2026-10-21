@@ -194,6 +194,7 @@ export function Panel() {
                 onSearch={(action) => void post("/api/search", { action })}
                 onInvite={(profileId) => void post("/api/drafts", { profileId }).then(() => chooseTab("invitaciones"))}
                 onOpenDraft={() => chooseTab("invitaciones")}
+                onToggleDailySearch={() => void post("/api/daily-search", {})}
               />
             ) : (
               <Skeleton />

@@ -1,6 +1,7 @@
 import STATIC from "./static.js";
 
-// Cloud (read-only) backend for the Radar. Static UI comes from Workers Assets; data from D1.
+// Cloud backend for the Radar. Static UI is bundled with the Worker; profile data lives in D1.
+// Writes are limited to city and follower range, plus the daily-search on/off switch.
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -14,7 +15,46 @@ async function readState(env) {
     .bind(state.settings.cityId)
     .all();
   state.profiles = rows.results.map((row) => JSON.parse(row.data));
+  return normalizeDailySearch(state);
+}
+
+function normalizeDailySearch(state) {
+  const count = Number(state.daily_search_last_run_new);
+  state.daily_search_enabled = state.daily_search_enabled === true;
+  state.daily_search_last_run_at =
+    typeof state.daily_search_last_run_at === "string" && state.daily_search_last_run_at
+      ? state.daily_search_last_run_at
+      : null;
+  state.daily_search_last_run_new = Number.isFinite(count) ? count : 0;
   return state;
+}
+
+async function readDailySearch(env) {
+  const rows = await env.DB.prepare(
+    "SELECT key, value FROM meta WHERE key IN ('daily_search_enabled', 'daily_search_last_run_at', 'daily_search_last_run_new')",
+  ).all();
+  const stored = {};
+  for (const row of rows.results) {
+    try {
+      stored[row.key] = JSON.parse(row.value);
+    } catch {
+      stored[row.key] = null;
+    }
+  }
+  const view = normalizeDailySearch(stored);
+  return {
+    enabled: view.daily_search_enabled,
+    lastRunAt: view.daily_search_last_run_at,
+    lastRunNew: view.daily_search_last_run_new,
+  };
+}
+
+async function writeMeta(env, key, value) {
+  await env.DB.prepare(
+    "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  )
+    .bind(key, JSON.stringify(value))
+    .run();
 }
 
 export default {
@@ -36,6 +76,13 @@ export default {
         .bind(JSON.stringify(settings))
         .run();
       return json({ message: "ok" });
+    }
+    if (pathname === "/api/daily-search" && (request.method === "GET" || request.method === "POST")) {
+      const current = await readDailySearch(env);
+      if (request.method === "GET") return json(current);
+      const enabled = !current.enabled;
+      await writeMeta(env, "daily_search_enabled", enabled);
+      return json({ ...current, enabled });
     }
     const avatar = pathname.match(/^\/api\/avatars\/([a-z0-9._]{1,30})$/);
     if (avatar) {

@@ -9,8 +9,10 @@ Fecha: 13-oct-2026 · Cuenta: lidertransformacion@libertariocoffee.com (account 
 - **API:** `cloudflare/worker.js`
   - `GET /api/state` → lee D1 (tabla `meta` con settings/cities/study/prices y tabla `profiles` con un JSON por perfil). Mismo formato que la API del Mac.
   - `PUT /api/settings` → solo cambia ciudad y rango.
+  - `GET /api/daily-search` → `{ enabled, lastRunAt, lastRunNew }` desde las claves meta `daily_search_enabled`, `daily_search_last_run_at`, `daily_search_last_run_new`.
+  - `POST /api/daily-search` → alterna `daily_search_enabled`.
   - `GET /api/avatars/<usuario>` → foto incrustada (12 fotos) o 404 → la UI muestra iniciales.
-  - Cualquier otro `/api/*` (búsqueda, importar, invitaciones, Instagram/Playwright) → 403 "solo lectura". Los botones ya están ocultos por `src/lib/ui-flags.ts`.
+  - Cualquier otro `/api/*` (búsqueda en la app, importar al Mac, invitaciones, Instagram/Playwright) → 403 "solo lectura". Los botones ya están ocultos por `src/lib/ui-flags.ts`. La carga diaria de perfiles nuevos va por SQL: ver `docs/daily-search.md`.
 - **Datos:** D1 `instaradar` (id 99b24b6d-cc75-4cb3-ae45-8ff9352e1702): 42 perfiles + 10 claves meta. El match, el engagement medido y la competencia van dentro del bundle (JSON en `src/data`).
 
 ## Recursos creados
@@ -34,5 +36,5 @@ Sin tokens ni secretos en el repo: todo va por el conector autenticado.
 
 ## Límites conocidos
 - La nube es una foto de los datos del Mac al momento del despliegue; no se sincroniza sola.
-- Búsqueda en Instagram, importación e invitaciones solo funcionan en el Mac.
+- Búsqueda en Instagram dentro de la app, importación al Mac e invitaciones solo funcionan en el Mac. Los perfiles nuevos del día se cargan en D1 con `docs/daily-search.md`.
 - og:image apunta a localhost (falta `metadataBase`); no afecta el uso.

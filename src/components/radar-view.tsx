@@ -6,15 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { avatarHue, formatFollowers, initials } from "@/lib/format";
+import { isNuevoHoy } from "@/lib/nuevo-hoy";
 import type { PanelState, ProfileCard } from "@/lib/types";
 import { LOCKED_FOLLOWER_RANGE, SHOW_SEARCH_CONTROLS } from "@/lib/ui-flags";
 import { engagementDisplay, libertarioMatch } from "@/lib/libertario-match";
+import { Switch } from "@/components/ui/switch";
 
 const SLIDER_MIN = 500;
 const SLIDER_MAX = 100_000;
 
 type SortKey = "match" | "score" | "engagement" | "followers";
-type ReviewFilter = "todos" | "verificados";
+type ReviewFilter = "todos" | "verificados" | "nuevos";
 
 export function RadarView(props: {
   state: PanelState;
@@ -26,6 +28,7 @@ export function RadarView(props: {
   onSearch: (action: "start" | "stop") => void;
   onInvite: (profileId: number) => void;
   onOpenDraft: () => void;
+  onToggleDailySearch: () => void;
 }) {
   const { settings, run, profiles, cities } = props.state;
   const [range, setRange] = useState<number[] | null>(null);
@@ -48,6 +51,7 @@ export function RadarView(props: {
   const visible = useMemo(() => {
     const filtered = profiles.filter((profile) => {
       if (review === "verificados" && !profile.verified) return false;
+      if (review === "nuevos" && !isNuevoHoy(profile)) return false;
       if (profile.followers == null) {
         if (!includeUnknown) return false;
       } else if (profile.followers < active[0] || profile.followers > active[1]) {
@@ -175,12 +179,33 @@ export function RadarView(props: {
         <span className="ml-auto text-muted-foreground tabular-nums">{visible.length}</span>
       </p>
 
+      {typeof props.state.daily_search_enabled === "boolean" ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
+          <label className="flex items-center gap-2 text-xs">
+            <Switch
+              checked={props.state.daily_search_enabled}
+              onCheckedChange={() => props.onToggleDailySearch()}
+              aria-label="Búsqueda diaria"
+            />
+            Búsqueda diaria
+          </label>
+          <p className="text-xs text-muted-foreground">
+            {props.state.daily_search_last_run_at
+              ? `Última corrida ${formatDailyRun(props.state.daily_search_last_run_at)} · ${props.state.daily_search_last_run_new ?? 0} nuevos`
+              : "Sin corridas todavía."}
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex gap-2 overflow-x-auto pb-1">
         <Chip active={review === "todos"} onClick={() => setReview("todos")}>
           Todos
         </Chip>
         <Chip active={review === "verificados"} onClick={() => setReview("verificados")}>
           Verificados
+        </Chip>
+        <Chip active={review === "nuevos"} onClick={() => setReview("nuevos")}>
+          Nuevos hoy
         </Chip>
         <Chip active={includeUnknown} onClick={() => setIncludeUnknown((current) => !current)}>
           Incluir sin dato
@@ -218,9 +243,11 @@ export function RadarView(props: {
 
       {!props.loading && visible.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-          {review === "verificados"
-            ? "Nadie verificado en este rango."
-            : "Nadie en este rango. Mueve los seguidores o dale a Buscar."}
+          {review === "nuevos"
+            ? "Nadie nuevo hoy en este rango."
+            : review === "verificados"
+              ? "Nadie verificado en este rango."
+              : "Nadie en este rango. Mueve los seguidores o dale a Buscar."}
         </p>
       ) : null}
 
@@ -232,6 +259,7 @@ export function RadarView(props: {
             delay={Math.min(index, 8) * 40}
             open={openId === profile.id}
             showSample={!settings.mockMode && profile.sample}
+            showNuevo={isNuevoHoy(profile)}
             onToggle={() => setOpenId((current) => (current === profile.id ? null : profile.id))}
             onInvite={() => (profile.hasDraft ? props.onOpenDraft() : props.onInvite(profile.id))}
           />
@@ -246,6 +274,7 @@ function ProfileRow(props: {
   delay: number;
   open: boolean;
   showSample: boolean;
+  showNuevo: boolean;
   onToggle: () => void;
   onInvite: () => void;
 }) {
@@ -276,6 +305,9 @@ function ProfileRow(props: {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {profile.zone ? <Badge variant="secondary">{profile.zone}</Badge> : null}
+            {props.showNuevo ? (
+              <Badge className="border-emerald-800/25 bg-emerald-100 text-emerald-950">Nuevos hoy</Badge>
+            ) : null}
             {profile.verified ? null : (
               <Badge className="border-amber-800/25 bg-amber-100 text-amber-950">Por verificar</Badge>
             )}
@@ -411,6 +443,16 @@ function scoreTone(score: number): string {
   if (score >= 80) return "text-emerald-900";
   if (score >= 60) return "text-amber-900";
   return "text-muted-foreground";
+}
+
+function formatDailyRun(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function statusLine(

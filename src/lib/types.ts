@@ -82,6 +82,10 @@ export type ProfileCard = {
   profileUrl: string;
   cityId: string;
   sample: boolean;
+  /** Set by the daily search import. The badge follows foundOn in America/Bogota. */
+  newToday?: boolean;
+  /** Calendar day (YYYY-MM-DD, America/Bogota) when a daily search first added this profile. */
+  foundOn?: string | null;
   hasDraft: boolean;
   draftId: number | null;
   breakdown: ScoreBreakdown;
@@ -178,4 +182,8 @@ export type PanelState = {
   pricesError: string | null;
   sendsToday: number;
   nextSendAt: string | null;
+  /** Cloud D1 meta. Absent on the local Mac database. */
+  daily_search_enabled?: boolean;
+  daily_search_last_run_at?: string | null;
+  daily_search_last_run_new?: number;
 };
